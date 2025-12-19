@@ -72,7 +72,7 @@ encrypt.key=your-32-byte-encryption-key
 
 ## Usage Example
 
-1. Modify the client configuration file `template-proxy.properties` -> `proxy.properties`
+1. Modify the configuration file `template-proxy.properties` -> `proxy.properties`
 2. Start the server and client
 3. Configure your browser or other applications to use the SOCKS5 proxy
 4. Begin encrypted proxy connections

@@ -72,7 +72,7 @@ encrypt.key=your-32-byte-encryption-key
 
 ## 使用示例
 
-1. 修改客户端配置文件 `template-proxy.properties` -> `proxy.properties`
+1. 修改双端通用配置文件 `template-proxy.properties` -> `proxy.properties`
 2. 启动服务端和客户端
 3. 配置浏览器或其他应用程序使用 socks5 代理
 4. 开始加密的代理连接
