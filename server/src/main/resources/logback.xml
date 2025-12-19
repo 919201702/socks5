@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <!-- 添加 statusListener 来禁止 Logback 自身的启动日志 -->
+    <statusListener class="ch.qos.logback.core.status.NopStatusListener" />
+
+    <!-- proxy.properties. 定义日志格式（可复用） -->
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"/>
+    <!-- 日志目录-->
+    <property name="LOG_HOME" value="${LOG_HOME:-.}/logs"/>
+
+    <!-- 3. 控制台输出 Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- 编码器：指定日志格式 -->
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset> <!-- 避免中文乱码 -->
+        </encoder>
+    </appender>
+
+    <!-- 4. 文件输出 Appender（按大小+时间滚动，生产常用） -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 日志文件路径 + 基础文件名 -->
+        <file>${LOG_HOME}/socks5-server.log</file>
+        <!-- 滚动策略：按时间（每天）+ 大小（xxxMB）分割 -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 滚动后的日志文件名：app-2025-12-12-0.log（超出大小自动加序号） -->
+            <fileNamePattern>${LOG_HOME}/app-%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+            <!-- 按大小触发滚动（xxxMB） -->
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>512MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!-- 日志保留天数：30天 -->
+            <maxHistory>30</maxHistory>
+            <!-- 总日志大小上限：10GB（超出自动删除旧日志） -->
+            <totalSizeCap>10GB</totalSizeCap>
+        </rollingPolicy>
+        <!-- 编码器：同控制台格式 -->
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 5. 全局日志级别配置 -->
+    <root level="INFO"> <!-- 全局默认级别：TRACE < DEBUG < INFO < WARN < ERROR -->
+        <!-- 关联 Appender：同时输出到控制台和文件 -->
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+</configuration>

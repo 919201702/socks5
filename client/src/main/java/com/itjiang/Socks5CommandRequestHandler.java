@@ -1,0 +1,73 @@
+package com.itjiang;
+
+import static com.itjiang.Config.*;
+
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.*;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.handler.codec.socksx.v5.DefaultSocks5CommandResponse;
+import io.netty.handler.codec.socksx.v5.Socks5CommandRequest;
+import io.netty.handler.codec.socksx.v5.Socks5CommandStatus;
+import io.netty.handler.codec.socksx.v5.Socks5CommandType;
+
+import java.io.IOException;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+// 2. 处理 SOCKS5 连接命令
+@ChannelHandler.Sharable
+public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Socks5CommandRequest> {
+    private static final Logger logger = LoggerFactory.getLogger(Socks5CommandRequestHandler.class);
+    public static final Socks5CommandRequestHandler INSTANCE = new Socks5CommandRequestHandler();
+
+    @Override
+    protected void channelRead0(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        if (request.type() == Socks5CommandType.CONNECT) {
+            connectToRemoteServer(browserCtx, request);
+        } else {
+            browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.COMMAND_UNSUPPORTED, request.dstAddrType()));
+            browserCtx.close();
+        }
+    }
+
+    private void connectToRemoteServer(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        Bootstrap b = new Bootstrap();
+        b.group(browserCtx.channel().eventLoop())
+                .channel(NioSocketChannel.class)
+                .option(ChannelOption.TCP_NODELAY, true)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                        // 连接远程服务器的 pipeline
+                        ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
+                        ch.pipeline().addLast(new Common.TunnelEncoder());
+                        ch.pipeline().addLast(new Common.TunnelDecoder());
+                        // **关键**：传入 browserCtx 和 request，以便在连接成功后响应浏览器
+                        ch.pipeline().addLast(new RemoteConnectionHandler(browserCtx, request));
+                    }
+                });
+
+        b.connect(SERVER_HOST, SERVER_PORT).addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                logger.error("连接远程服务器失败");
+                // 连接远程服务器失败，直接告诉浏览器
+                browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
+                browserCtx.close();
+            }
+        });
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+        // 在命令处理阶段，浏览器也可能重置连接
+        if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
+            ctx.close();
+        } else {
+            logger.error("Exception in Socks5CommandRequestHandler", cause);
+            ctx.close();
+        }
+    }
+}
