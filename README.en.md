@@ -4,30 +4,30 @@ This is a SOCKS5 proxy service implemented based on Netty, supporting encrypted 
 
 ## Features
 
-- Full implementation of the SOCKS5 protocol
-- Support for AES-GCM encrypted communication
-- Support for remote tunnel forwarding
-- Support for authentication
+- Implements SOCKS5 protocol (TCP IPv4)
+- Supports AES-GCM encrypted communication
+- Supports remote tunnel forwarding
+- Supports remote service authentication
 - Cross-platform support (Windows/Linux/Mac)
 
 ## Directory Structure
 
 ```
-├── client/          # Client code
-├── common/          # Common classes and utilities
-├── server/          # Server code
-├── test/            # Test code
-├── native-client.sh # Startup script
-├── pom.xml          # Maven configuration
+├── client/                     # Client code
+├── common/                     # Common classes and utilities
+├── server/                     # Server code
+├── test/                       # Test code
+├── native-client.sh            # Client packaging script
+├── template-proxy.properties   # Configuration template
+├── pom.xml                     # Maven configuration
 ```
 
 ## Quick Start
 
 ### Prerequisites
 
-- Java 1.8+
-- Maven 3.0+
-- Netty 4.1+
+- Java 21+
+- Maven 3.9+
 
 ### Build the Project
 
@@ -38,13 +38,17 @@ mvn clean package
 ### Start the Server
 
 ```bash
-java -jar server/target/socks5-server.jar
+java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 ```
 
 ### Start the Client
 
 ```bash
-java -jar client/target/socks5-client.jar
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar
+```
+or
+```bash
+cd client/target/ && ./client
 ```
 
 ## Configuration Details
@@ -68,7 +72,7 @@ encrypt.key=your-32-byte-encryption-key
 
 ## Usage Example
 
-1. Modify the client configuration file `template-proxy.properties`
+1. Modify the client configuration file `template-proxy.properties` -> `proxy.properties`
 2. Start the server and client
 3. Configure your browser or other applications to use the SOCKS5 proxy
 4. Begin encrypted proxy connections

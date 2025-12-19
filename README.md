@@ -4,30 +4,30 @@
 
 ## 功能特性
 
-- 完整实现 socks5 协议
+- 实现 socks5 协议（tcp ipv4）
 - 支持 AES-GCM 加密通信
 - 支持远程隧道转发
-- 支持认证功能
+- 支持远程服务认证功能
 - 跨平台支持（Windows/Linux/Mac）
 
 ## 目录结构
 
 ```
-├── client/          # 客户端代码
-├── common/          # 公共类和工具
-├── server/          # 服务端代码
-├── test/            # 测试代码
-├── native-client.sh # 启动脚本
-├── pom.xml          # Maven 配置
+├── client/                     # 客户端代码
+├── common/                     # 公共类和工具
+├── server/                     # 服务端代码
+├── test/                       # 测试代码
+├── native-client.sh            # 客户端打包脚本
+├── template-proxy.properties   # 配置文件模版
+├── pom.xml                     # Maven 配置
 ```
 
 ## 快速开始
 
 ### 环境要求
 
-- Java 1.8+
-- Maven 3.0+
-- Netty 4.1+
+- Java 21+
+- Maven 3.9+
 
 ### 构建项目
 
@@ -38,13 +38,17 @@ mvn clean package
 ### 启动服务端
 
 ```bash
-java -jar server/target/socks5-server.jar
+java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 ```
 
 ### 启动客户端
 
 ```bash
-java -jar client/target/socks5-client.jar
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar
+```
+或者
+```bash
+cd client/target/ && ./client
 ```
 
 ## 配置说明
@@ -68,7 +72,7 @@ encrypt.key=your-32-byte-encryption-key
 
 ## 使用示例
 
-1. 修改客户端配置文件 `template-proxy.properties`
+1. 修改客户端配置文件 `template-proxy.properties` -> `proxy.properties`
 2. 启动服务端和客户端
 3. 配置浏览器或其他应用程序使用 socks5 代理
 4. 开始加密的代理连接
