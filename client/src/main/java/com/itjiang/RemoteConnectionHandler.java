@@ -15,7 +15,7 @@ import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// 3. 处理与远程服务器的隧道通信
+// 处理与远程服务器的隧道通信
 public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.TunnelMsg> {
     private static final Logger logger = LoggerFactory.getLogger(RemoteConnectionHandler.class);
 
@@ -32,7 +32,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     public void channelActive(ChannelHandlerContext remoteCtx) {
         // proxy.properties. 发送认证信息
         remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.AUTH_TOKEN.getBytes(StandardCharsets.UTF_8)));
-        // 2. 发送目标地址
+        // 发送目标地址
         String targetAddr = String.format("%s:%d", socksRequest.dstAddr(), socksRequest.dstPort());
         logger.info("浏览器请求连接: {}", targetAddr);
         remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr.getBytes(StandardCharsets.UTF_8)));
@@ -59,7 +59,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
                     browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
                             Socks5CommandStatus.SUCCESS, socksRequest.dstAddrType(), socksRequest.dstAddr(), socksRequest.dstPort()));
 
-                    // 2. 清理并更新浏览器端的 pipeline
+                    // 清理并更新浏览器端的 pipeline
                     if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
                         browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
                     }
@@ -68,7 +68,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
                     }
                     browserCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
 
-                    // 3. 清理并更新远程连接端的 pipeline
+                    // 清理并更新远程连接端的 pipeline
                     remoteCtx.pipeline().remove(this);
                     remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(browserCtx.channel()));
                 }
@@ -117,7 +117,6 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
 
     private void closeChannels(ChannelHandlerContext remoteCtx) {
         if (browserCtx.channel().isActive()) {
-            // 使用 close() 会自动刷新并关闭
             browserCtx.close();
         }
         if (remoteCtx.channel().isActive()) {

@@ -17,7 +17,6 @@ public class Socks5ProxyClient {
     private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyClient.class);
 
     public static void main(String[] args) throws InterruptedException {
-        // Boss Group处理连接请求，Worker Group处理I/O
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {

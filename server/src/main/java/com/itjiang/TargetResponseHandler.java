@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory;
 public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(TargetResponseHandler.class);
-    private final ChannelHandlerContext clientCtx; // 到客户端的 ChannelHandlerContext
+    private final ChannelHandlerContext clientCtx;
 
     public TargetResponseHandler(ChannelHandlerContext clientCtx) {
         this.clientCtx = clientCtx;

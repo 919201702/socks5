@@ -10,7 +10,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// 4b. 将远程服务器数据 -> 解密 -> 发送到浏览器
 public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.TunnelMsg> {
     private static final Logger logger = LoggerFactory.getLogger(RemoteDataRelayHandler.class);
 

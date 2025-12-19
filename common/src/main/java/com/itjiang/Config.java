@@ -10,7 +10,7 @@ import java.util.Properties;
  * 配置文件解析器.
  * <p>
  * 负责加载位于程序运行目录下的 `proxy.properties` 文件.
- * 如果文件不存在或加载失败, 将使用代码中定义的默认值.
+ * 如果部分加载失败, 将使用代码中定义的默认值.
  */
 public final class Config {
 

@@ -17,7 +17,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// 2. 处理 SOCKS5 连接命令
 @ChannelHandler.Sharable
 public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Socks5CommandRequest> {
     private static final Logger logger = LoggerFactory.getLogger(Socks5CommandRequestHandler.class);
@@ -45,7 +44,6 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
                         ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
                         ch.pipeline().addLast(new Common.TunnelEncoder());
                         ch.pipeline().addLast(new Common.TunnelDecoder());
-                        // **关键**：传入 browserCtx 和 request，以便在连接成功后响应浏览器
                         ch.pipeline().addLast(new RemoteConnectionHandler(browserCtx, request));
                     }
                 });
