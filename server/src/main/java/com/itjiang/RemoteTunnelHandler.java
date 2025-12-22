@@ -39,6 +39,9 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             logger.info("新的客户端连接: {}", clientCtx.channel().remoteAddress());
         } else {
             logger.warn("非法客户端连接: {}", clientCtx.channel().remoteAddress());
+            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, "token验证失败".getBytes(StandardCharsets.UTF_8));
+            clientCtx.writeAndFlush(toMsg)
+                    .addListener(ChannelFutureListener.CLOSE);
             clientCtx.close();
         }
     }
@@ -54,7 +57,8 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         String[] split = hostPort.split(":");
         if (split.length != 2) {
             logger.warn("无效的目标地址格式: {}", hostPort);
-            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, null))
+            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, String.format("无效的目标地址格式: %s", hostPort).getBytes(StandardCharsets.UTF_8));
+            clientCtx.writeAndFlush(toMsg)
                     .addListener(ChannelFutureListener.CLOSE);
             return;
         }
@@ -74,7 +78,9 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
                 clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, null));
             } else {
                 logger.info("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, null))
+                byte[] msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage()).getBytes(StandardCharsets.UTF_8);
+                Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, msgData);
+                clientCtx.writeAndFlush(toMsg)
                         .addListener(ChannelFutureListener.CLOSE);
             }
         });

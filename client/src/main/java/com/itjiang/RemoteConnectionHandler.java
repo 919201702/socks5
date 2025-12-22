@@ -11,6 +11,7 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     protected void channelRead0(ChannelHandlerContext remoteCtx, Common.TunnelMsg msg) {
         switch (msg.type()) {
             case Common.TYPE_CONNECT_SUCCESS -> handleConnectSuccess(remoteCtx);
-            case Common.TYPE_CONNECT_FAIL -> handleConnectFail(remoteCtx);
+            case Common.TYPE_CONNECT_FAIL -> handleConnectFail(remoteCtx, msg);
             case Common.TYPE_DATA -> handleData(msg);
             case Common.TYPE_DISCONNECT -> handleDisconnect(remoteCtx);
             default -> ReferenceCountUtil.release(msg);
@@ -79,8 +80,9 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
         }
     }
 
-    private void handleConnectFail(ChannelHandlerContext remoteCtx) {
-        logger.warn("⚠️请求失败: {}", socksRequest.dstAddr());
+    private void handleConnectFail(ChannelHandlerContext remoteCtx, Common.TunnelMsg msg) {
+        String remoteMsg = Optional.ofNullable(msg).map(Common.TunnelMsg::data).map(String::new).orElse(null);
+        logger.warn("⚠️请求失败: {}, 服务端消息: {}", socksRequest.dstAddr(), remoteMsg);
         if (browserCtx.channel().isActive()) {
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, socksRequest.dstAddrType()))
                      .addListener(future -> browserCtx.close());
