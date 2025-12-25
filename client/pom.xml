@@ -127,6 +127,7 @@
                                 <buildArg>--enable-url-protocols=https</buildArg>
                                 <!-- 禁用 Netty 的 FFM 特性，避免链接器错误 -->
                                 <buildArg>-Dio.netty.incubator.foreign.Foreign.isEnabled=false</buildArg>
+                                <buildArg>-H:IncludeResources=simplelogger.properties</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

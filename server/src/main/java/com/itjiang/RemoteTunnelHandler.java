@@ -77,7 +77,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
                 this.targetChannel = future.channel();
                 clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, null));
             } else {
-                logger.info("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
+                logger.error("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
                 byte[] msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage()).getBytes(StandardCharsets.UTF_8);
                 Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, msgData);
                 clientCtx.writeAndFlush(toMsg)

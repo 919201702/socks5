@@ -73,7 +73,14 @@ public final class Common {
     // 消息对象
     public record TunnelMsg(byte type, byte[] data) {}
 
-    // 编码器，必须依赖LengthFieldBasedFrameDecoder处理tcp半包粘包问题
+    /**
+     * 编码器，必须依赖LengthFieldBasedFrameDecoder处理tcp半包粘包问题
+     * <pre>
+     * +--------+-----------------------------+
+     * | Length  | Type   |  Data             |
+     * | 4 byte  | 1 byte |  data.length Byte |
+     * +--------+-----------------------------+ </pre>
+     */
     public static class TunnelEncoder extends MessageToByteEncoder<TunnelMsg> {
         @Override
         protected void encode(ChannelHandlerContext ctx, TunnelMsg msg, ByteBuf out) {
@@ -91,7 +98,7 @@ public final class Common {
         }
     }
 
-    // 解码器，必须依赖LengthFieldBasedFrameDecoder处理tcp半包粘包问题
+    // 配套解码器
     public static class TunnelDecoder extends ByteToMessageDecoder {
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
