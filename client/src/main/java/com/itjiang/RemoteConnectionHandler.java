@@ -53,27 +53,22 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     private void handleConnectSuccess(ChannelHandlerContext remoteCtx) {
         // 确保对 browserCtx 的操作在其自身的 EventLoop 中执行，避免竞态条件
         if (browserCtx.channel().isActive()) {
-            browserCtx.executor().execute(() -> {
-                // 再次检查，因为在任务被执行前，channel 可能已经关闭
-                if (browserCtx.channel().isActive()) {
-                    // proxy.properties. 向浏览器发送 Socks5 成功响应
-                    browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
-                            Socks5CommandStatus.SUCCESS, socksRequest.dstAddrType(), socksRequest.dstAddr(), socksRequest.dstPort()));
+            // proxy.properties. 向浏览器发送 Socks5 成功响应
+            browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
+                    Socks5CommandStatus.SUCCESS, socksRequest.dstAddrType(), socksRequest.dstAddr(), socksRequest.dstPort()));
 
-                    // 清理并更新浏览器端的 pipeline
-                    if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
-                        browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
-                    }
-                    if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
-                        browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
-                    }
-                    browserCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
+            // 清理并更新浏览器端的 pipeline
+            if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
+                browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
+            }
+            if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
+                browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
+            }
+            browserCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
 
-                    // 清理并更新远程连接端的 pipeline
-                    remoteCtx.pipeline().remove(this);
-                    remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(browserCtx.channel()));
-                }
-            });
+            // 清理并更新远程连接端的 pipeline
+            remoteCtx.pipeline().remove(this);
+            remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(browserCtx.channel()));
         } else {
             // 如果浏览器连接已经关闭，我们也需要关闭远程连接
             remoteCtx.close();

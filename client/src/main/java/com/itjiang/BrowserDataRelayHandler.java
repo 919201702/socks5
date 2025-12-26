@@ -1,6 +1,7 @@
 package com.itjiang;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -36,7 +37,7 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext browserCtx) {
         if (remoteChannel.isActive()) {
-            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (ByteBuf) null))
+            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (String) null))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }

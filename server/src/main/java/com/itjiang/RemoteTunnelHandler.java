@@ -1,13 +1,10 @@
 package com.itjiang;
 
-import java.nio.charset.StandardCharsets;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -34,7 +31,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
     }
 
     private void handleAuth(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
-        String token = Unpooled.wrappedBuffer(msg.getData()).toString(StandardCharsets.UTF_8);
+        String token = msg.getDataAsString();
         if (Config.AUTH_TOKEN.equals(token)) {
             authenticated = true;
             logger.info("新的客户端连接: {}", clientCtx.channel().remoteAddress());
@@ -43,7 +40,6 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, "token验证失败");
             clientCtx.writeAndFlush(toMsg)
                     .addListener(ChannelFutureListener.CLOSE);
-            clientCtx.close();
         }
     }
 
@@ -76,7 +72,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         b.connect(host, port).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
                 this.targetChannel = future.channel();
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, (ByteBuf) null));
+                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, (String) null));
             } else {
                 logger.error("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
                 String msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage());
@@ -94,6 +90,17 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             // 如果目标通道未准备好，可以选择关闭连接或忽略数据
             ReferenceCountUtil.release(msg);
         }
+    }
+
+    // 当 Client 连接的可写状态发生变化（比如 Client 网速慢，导致 Server 发给 Client 的数据积压）
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext clientCtx) throws Exception {
+        boolean canWrite = clientCtx.channel().isWritable();
+        if (targetChannel != null) {
+            // 只要 Client 写不动了，就告诉 Target：别读了，暂停！
+            targetChannel.config().setAutoRead(canWrite);
+        }
+        super.channelWritabilityChanged(clientCtx);
     }
 
     private void handleDisconnect(ChannelHandlerContext clientCtx) {

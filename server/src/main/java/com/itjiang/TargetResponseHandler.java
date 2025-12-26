@@ -1,6 +1,7 @@
 package com.itjiang;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
@@ -27,7 +28,6 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
             if (msg instanceof ByteBuf buf) {
                 clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
             }
-            ReferenceCountUtil.release(msg);
         } else {
             ReferenceCountUtil.release(msg);
             targetCtx.close();
@@ -35,10 +35,18 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
+    public void channelWritabilityChanged(ChannelHandlerContext targetCtx) throws Exception {
+        boolean canWrite = targetCtx.channel().isWritable();
+        // 告诉 Client：别发了，我发不出去了！
+        clientCtx.channel().config().setAutoRead(canWrite);
+        super.channelWritabilityChanged(targetCtx);
+    }
+
+    @Override
     public void channelInactive(ChannelHandlerContext targetCtx) {
         // 目标服务器断开连接，通知客户端断开
         if (clientCtx.channel().isActive()) {
-            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (ByteBuf) null))
+            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (String) null))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }
