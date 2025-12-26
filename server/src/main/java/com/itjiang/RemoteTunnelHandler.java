@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
@@ -23,7 +24,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
 
     @Override
     protected void channelRead0(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
-        switch (msg.type()) {
+        switch (msg.getType()) {
             case Common.TYPE_AUTH -> handleAuth(clientCtx, msg);
             case Common.TYPE_CONNECT -> handleConnect(clientCtx, msg);
             case Common.TYPE_DATA -> handleData(clientCtx, msg);
@@ -33,13 +34,13 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
     }
 
     private void handleAuth(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
-        String token = new String(msg.data(), StandardCharsets.UTF_8);
+        String token = Unpooled.wrappedBuffer(msg.getData()).toString(StandardCharsets.UTF_8);
         if (Config.AUTH_TOKEN.equals(token)) {
             authenticated = true;
             logger.info("新的客户端连接: {}", clientCtx.channel().remoteAddress());
         } else {
             logger.warn("非法客户端连接: {}", clientCtx.channel().remoteAddress());
-            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, "token验证失败".getBytes(StandardCharsets.UTF_8));
+            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, "token验证失败");
             clientCtx.writeAndFlush(toMsg)
                     .addListener(ChannelFutureListener.CLOSE);
             clientCtx.close();
@@ -52,12 +53,11 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             clientCtx.close();
             return;
         }
-
-        String hostPort = new String(msg.data(), StandardCharsets.UTF_8);
+        String hostPort =  msg.getDataAsString();
         String[] split = hostPort.split(":");
         if (split.length != 2) {
             logger.warn("无效的目标地址格式: {}", hostPort);
-            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, String.format("无效的目标地址格式: %s", hostPort).getBytes(StandardCharsets.UTF_8));
+            Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, String.format("无效的目标地址格式: %s", hostPort));
             clientCtx.writeAndFlush(toMsg)
                     .addListener(ChannelFutureListener.CLOSE);
             return;
@@ -68,6 +68,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         logger.info("连接到: {}:{} 来自客户端: {}", host, port, clientCtx.channel().remoteAddress());
 
         Bootstrap b = new Bootstrap();
+        // 核心，使用同一个channel
         b.group(clientCtx.channel().eventLoop())
                 .channel(NioSocketChannel.class)
                 .handler(new TargetResponseHandler(clientCtx)); // 将 clientCtx 传入
@@ -75,10 +76,10 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         b.connect(host, port).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
                 this.targetChannel = future.channel();
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, null));
+                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, (ByteBuf) null));
             } else {
                 logger.error("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
-                byte[] msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage()).getBytes(StandardCharsets.UTF_8);
+                String msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage());
                 Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, msgData);
                 clientCtx.writeAndFlush(toMsg)
                         .addListener(ChannelFutureListener.CLOSE);
@@ -88,7 +89,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
 
     private void handleData(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
         if (targetChannel != null && targetChannel.isActive()) {
-            targetChannel.writeAndFlush(Unpooled.wrappedBuffer(msg.data()));
+            targetChannel.writeAndFlush(msg.getData());
         } else {
             // 如果目标通道未准备好，可以选择关闭连接或忽略数据
             ReferenceCountUtil.release(msg);
@@ -116,6 +117,5 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         if (targetChannel != null && targetChannel.isActive()) {
             targetChannel.close();
         }
-        // The client channel will be closed automatically by Netty
     }
 }

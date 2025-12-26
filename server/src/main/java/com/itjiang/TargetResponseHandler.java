@@ -25,9 +25,7 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
         if (clientCtx.channel().isActive()) {
             // 收到目标服务器的数据，封装后发回给客户端
             if (msg instanceof ByteBuf buf) {
-                byte[] bytes = new byte[buf.readableBytes()];
-                buf.readBytes(bytes);
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, bytes));
+                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
             }
             ReferenceCountUtil.release(msg);
         } else {
@@ -40,7 +38,7 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
     public void channelInactive(ChannelHandlerContext targetCtx) {
         // 目标服务器断开连接，通知客户端断开
         if (clientCtx.channel().isActive()) {
-            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, null))
+            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (ByteBuf) null))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }

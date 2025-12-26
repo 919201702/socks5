@@ -22,12 +22,10 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) {
+    public void channelRead(ChannelHandlerContext browserCtx, Object msg) {
         if (remoteChannel.isActive()) {
             if (msg instanceof ByteBuf buf) {
-                byte[] bytes = new byte[buf.readableBytes()];
-                buf.readBytes(bytes);
-                remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, bytes));
+                remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
             }
             ReferenceCountUtil.release(msg);
         } else {
@@ -36,20 +34,20 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelInactive(ChannelHandlerContext ctx) {
+    public void channelInactive(ChannelHandlerContext browserCtx) {
         if (remoteChannel.isActive()) {
-            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, null))
+            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (ByteBuf) null))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }
 
     @Override
-    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+    public void exceptionCaught(ChannelHandlerContext browserCtx, Throwable cause) {
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
-            ctx.close();
+            browserCtx.close();
         } else {
             logger.error("Exception in BrowserDataRelayHandler", cause);
-            ctx.close();
+            browserCtx.close();
         }
     }
 }

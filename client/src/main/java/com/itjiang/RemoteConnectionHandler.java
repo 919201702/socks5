@@ -1,6 +1,8 @@
 package com.itjiang;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.socksx.v5.DefaultSocks5CommandResponse;
@@ -11,7 +13,6 @@ import io.netty.util.ReferenceCountUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,20 +32,19 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     // 当连接到远程服务器成功后
     @Override
     public void channelActive(ChannelHandlerContext remoteCtx) {
-        // proxy.properties. 发送认证信息
-        remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.AUTH_TOKEN.getBytes(StandardCharsets.UTF_8)));
-        // 发送目标地址
+        remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.AUTH_TOKEN));
+
         String targetAddr = String.format("%s:%d", socksRequest.dstAddr(), socksRequest.dstPort());
         logger.info("浏览器请求连接: {}", targetAddr);
-        remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr.getBytes(StandardCharsets.UTF_8)));
+        remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr));
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext remoteCtx, Common.TunnelMsg msg) {
-        switch (msg.type()) {
+        switch (msg.getType()) {
             case Common.TYPE_CONNECT_SUCCESS -> handleConnectSuccess(remoteCtx);
             case Common.TYPE_CONNECT_FAIL -> handleConnectFail(remoteCtx, msg);
-            case Common.TYPE_DATA -> handleData(msg);
+            case Common.TYPE_DATA -> handleData(remoteCtx, msg);
             case Common.TYPE_DISCONNECT -> handleDisconnect(remoteCtx);
             default -> ReferenceCountUtil.release(msg);
         }
@@ -81,20 +81,39 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     }
 
     private void handleConnectFail(ChannelHandlerContext remoteCtx, Common.TunnelMsg msg) {
-        String remoteMsg = Optional.ofNullable(msg).map(Common.TunnelMsg::data).map(String::new).orElse(null);
-        logger.warn("⚠️请求失败: {}, 服务端消息: {}", socksRequest.dstAddr(), remoteMsg);
+        String remoteMsg = null;
+        if (msg != null && msg.getData() != null && msg.getData().isReadable()) {
+            remoteMsg = msg.getData().toString(StandardCharsets.UTF_8);
+        }
+        if (remoteMsg != null) {
+            logger.warn("⚠️请求失败: {}, 服务端消息: {}", socksRequest.dstAddr(), remoteMsg);
+        } else {
+            logger.warn("⚠️请求失败: {}, 未知错误", socksRequest.dstAddr());
+        }
         if (browserCtx.channel().isActive()) {
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, socksRequest.dstAddrType()))
-                     .addListener(future -> browserCtx.close());
+                    .addListener(ChannelFutureListener.CLOSE);
         }
         remoteCtx.close();
     }
 
-    private void handleData(Common.TunnelMsg msg) {
+    private void handleData(ChannelHandlerContext browserCtx, Common.TunnelMsg msg) {
         if (browserCtx.channel().isActive()) {
-            browserCtx.writeAndFlush(Unpooled.wrappedBuffer(msg.data()));
-        } else {
-            ReferenceCountUtil.release(msg);
+            ByteBuf data = msg.getData();
+
+            // 2. 【关键】引用计数 +1
+            // 解释：SimpleChannelInboundHandler 会在这个方法结束后自动释放 msg (以及内部的 data)。
+            // 但是 writeAndFlush 是异步的（可能 1毫秒后才真发出去）。
+            // 所以我们必须 retain 一次，把生命周期交给 browserCtx 的 write 队列。
+            browserCtx.writeAndFlush(data.retain())
+                    .addListener(future -> {
+                        if (!future.isSuccess()) {
+                            // 如果发送失败，必须手动释放，否则内存泄漏
+                            // (如果成功，Netty 会在写完后自动释放)
+                            ReferenceCountUtil.safeRelease(data);
+                            logger.error("写入浏览器失败", future.cause());
+                        }
+                    });
         }
     }
 

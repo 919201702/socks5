@@ -1,6 +1,5 @@
 package com.itjiang;
 
-import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
@@ -20,11 +19,11 @@ public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.T
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Common.TunnelMsg msg) {
-        if (msg.type() == Common.TYPE_DATA) {
+        if (msg.getType() == Common.TYPE_DATA) {
             if (browserChannel.isActive()) {
-                browserChannel.writeAndFlush(Unpooled.wrappedBuffer(msg.data()));
+                browserChannel.writeAndFlush(msg.getData());
             }
-        } else if (msg.type() == Common.TYPE_DISCONNECT) {
+        } else if (msg.getType() == Common.TYPE_DISCONNECT) {
             if (browserChannel.isActive()) {
                 browserChannel.close();
             }
