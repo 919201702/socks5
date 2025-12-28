@@ -91,6 +91,10 @@ openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048
 ```shell
 openssl req -new -x509 -key server.key -out server.crt -days 3650 -subj "/CN=MyTunnelServer"
 ```
+```shell
+# 强制小内存下运行，会使gc更频繁 -64M
+client.exe -Xmx64m
+```
 ## 许可协议
 
 本项目遵循 Apache-2.0 许可协议。
