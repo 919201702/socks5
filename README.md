@@ -77,6 +77,10 @@ encrypt.key=your-32-byte-encryption-key
 3. 配置浏览器或其他应用程序使用 socks5 代理
 4. 开始加密的代理连接
 
+## todo
+长期运行前，建议在启动参数中加上：
+-Dio.netty.leakDetection.level=PARANOID
+让它跑几天。如果日志里没有出现 LEAK: ByteBuf.release() was not called，那你就可以放心地把它部署到服务器上（生产环境可以去掉这个参数以节省性能）。
 ## 许可协议
 
 本项目遵循 Apache-2.0 许可协议。

@@ -14,8 +14,13 @@ import io.netty.handler.codec.socksx.v5.Socks5CommandType;
 
 import java.io.IOException;
 
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import javax.net.ssl.SSLException;
 
 @ChannelHandler.Sharable
 public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Socks5CommandRequest> {
@@ -33,6 +38,16 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
     }
 
     private void connectToRemoteServer(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        SslContext sslCtx;
+        try {
+            sslCtx = SslContextBuilder.forClient()
+                    .sslProvider(SslProvider.OPENSSL)
+                    // 只信任该server.crt
+                    .trustManager(Config.SERVER_CERT)
+                    .build();
+        } catch (SSLException e) {
+            throw new RuntimeException(e);
+        }
         Bootstrap b = new Bootstrap();
         b.group(browserCtx.channel().eventLoop())
                 .channel(NioSocketChannel.class)
@@ -41,9 +56,10 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
                     @Override
                     protected void initChannel(SocketChannel ch) {
                         // 连接远程服务器的 pipeline
+                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), SERVER_HOST, SERVER_PORT));
                         ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
-                        ch.pipeline().addLast(new Common.TunnelEncoder());
-                        ch.pipeline().addLast(new Common.TunnelDecoder());
+                        ch.pipeline().addLast(new Common.TunnelMsgDecoder());
+                        ch.pipeline().addLast(new Common.TunnelMsgEncoder());
                         ch.pipeline().addLast(new RemoteConnectionHandler(browserCtx, request));
                     }
                 });
