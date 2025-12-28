@@ -51,24 +51,20 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
 
     private void handleConnectSuccess(ChannelHandlerContext remoteCtx) {
         if (browserCtx.channel().isActive()) {
-            // 1. 先给浏览器发响应 (write 是线程安全的，这里没事)
+            // 远程连结成功，通知浏览器
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
                     Socks5CommandStatus.SUCCESS, socksRequest.dstAddrType(), socksRequest.dstAddr(), socksRequest.dstPort()));
 
-            // 2. 安全地修改 Browser Pipeline
             browserCtx.executor().execute(() -> {
-                // 在 Browser 自己的线程里移除旧 Handler，添加新 Handler
                 if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
                     browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
                 }
                 if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
                     browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
                 }
-                // 这里的 remoteCtx.channel() 是跨线程传入的，作为成员变量是安全的
                 browserCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
             });
 
-            // 3. 修改 Remote 自己的 Pipeline (当前线程，直接改)
             remoteCtx.pipeline().remove(this);
             remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(browserCtx.channel()));
         } else {
@@ -121,7 +117,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
             closeChannels(ctx);
         } else {
-            logger.error("Exception in RemoteConnectionHandler", cause);
+            logger.error("远程连结通道异常", cause);
             closeChannels(ctx);
         }
     }

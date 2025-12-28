@@ -14,7 +14,6 @@ import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// proxy.properties. 处理 SOCKS5 初始握手
 @ChannelHandler.Sharable
 public class Socks5InitialRequestHandler extends SimpleChannelInboundHandler<Socks5InitialRequest> {
     private static final Logger logger = LoggerFactory.getLogger(Socks5InitialRequestHandler.class);

@@ -44,27 +44,23 @@ public class Common {
         @Override public ReferenceCounted touch(Object hint) { if (data != null) data.touch(hint); return this; }
     }
 
-    // --- 新的编码器 (只负责序列化，不加密) ---
+    // 序列化，前置依赖LengthFieldBasedFrameDecoder
     // 协议格式: [Length 4][Type 1][Raw Data N]
     public static class TunnelMsgEncoder extends MessageToByteEncoder<TunnelMsg> {
         @Override
         protected void encode(ChannelHandlerContext ctx, TunnelMsg msg, ByteBuf out) {
             int dataLen = msg.getData().readableBytes();
-            out.writeInt(1 + dataLen); // Length = Type(1) + Body
+            out.writeInt(1 + dataLen);
             out.writeByte(msg.getType());
-            out.writeBytes(msg.getData().duplicate()); // 写入数据
+            out.writeBytes(msg.getData().duplicate());
         }
     }
 
-    // --- 新的解码器 ---
     public static class TunnelMsgDecoder extends ByteToMessageDecoder {
         @Override
         protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
-            // LengthFieldBasedFrameDecoder 已经帮我们把包切好了
             if (!in.isReadable()) return;
-
             byte type = in.readByte();
-            // 剩下的全是 data
             ByteBuf data = in.readRetainedSlice(in.readableBytes());
             out.add(new TunnelMsg(type, data));
         }

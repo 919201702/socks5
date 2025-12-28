@@ -76,7 +76,7 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        // 在命令处理阶段，浏览器也可能重置连接
+        // 命令处理阶段，浏览器也可能重置连接
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
             ctx.close();
         } else {

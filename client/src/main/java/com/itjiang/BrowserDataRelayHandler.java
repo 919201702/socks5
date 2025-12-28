@@ -51,7 +51,7 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
             browserCtx.close();
         } else {
-            logger.error("Exception in BrowserDataRelayHandler", cause);
+            logger.error("浏览器通道异常", cause);
             browserCtx.close();
         }
     }

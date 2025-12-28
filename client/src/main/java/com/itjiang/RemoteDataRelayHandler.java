@@ -40,7 +40,7 @@ public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.T
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        // 远程服务器或网络问题可能导致连接重置。
+        // 远程服务器或网络问题可能导致连接重置
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
             ctx.close();
         } else {

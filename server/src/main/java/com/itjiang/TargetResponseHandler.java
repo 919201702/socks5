@@ -59,7 +59,6 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
-            // 正常的连接重置，不需要打印堆栈
             logger.debug("Target connection reset");
         } else {
             logger.error("Exception in TargetResponseHandler", cause);
