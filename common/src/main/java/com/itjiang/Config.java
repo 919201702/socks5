@@ -26,7 +26,7 @@ public final class Config {
     public static final int CLIENT_LOCAL_PORT;
     public static final String AUTH_TOKEN;
     public static final File SERVER_CERT; // server.crt
-    public static final File SERVER_KEY; // server.key
+    public static File SERVER_KEY; // server.key
     static {
         Properties props = new Properties();
         try (InputStream input = new FileInputStream("proxy.properties")) {
@@ -43,7 +43,10 @@ public final class Config {
             throw new RuntimeException("配置错误: 读取 server.cert.path 失败");
         }
         try {
-            SERVER_KEY = new File(props.getProperty("server.key.path"));
+            String serverKeyPath = props.getProperty("server.key.path");
+            if (serverKeyPath != null && !serverKeyPath.isEmpty()) {
+                SERVER_KEY = new File(serverKeyPath);
+            }
         } catch (Exception e) {
             throw new RuntimeException("配置错误: 读取 server.key.path 失败");
         }
