@@ -1,16 +1,14 @@
 package com.itjiang;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
-
-import java.io.IOException;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
 
 public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
 
@@ -23,42 +21,49 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext targetCtx, Object msg) {
-        if (clientCtx.channel().isActive()) {
-            // 收到目标服务器的数据，封装后发回给客户端
-            if (msg instanceof ByteBuf buf) {
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
-            }
-        } else {
+        if (!clientCtx.channel().isActive()) {
             ReferenceCountUtil.release(msg);
             targetCtx.close();
+            return;
+        }
+
+        if (msg instanceof ByteBuf buf) {
+            // 手动控制引用计数，直接移交是最优处理
+            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
+        } else {
+            logger.warn("收到意外的消息类型: {}", msg.getClass());
+            ReferenceCountUtil.release(msg);
         }
     }
 
     @Override
     public void channelWritabilityChanged(ChannelHandlerContext targetCtx) throws Exception {
         boolean canWrite = targetCtx.channel().isWritable();
-        // 告诉 Client：别发了，我发不出去了！
-        clientCtx.channel().config().setAutoRead(canWrite);
+        // 背压处理，防止targetCtx数据积压，让客户端暂停写入
+        if (clientCtx.channel().isActive()) {
+            clientCtx.channel().config().setAutoRead(canWrite);
+        }
+
         super.channelWritabilityChanged(targetCtx);
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext targetCtx) {
-        // 目标服务器断开连接，通知客户端断开
+        // 目标断开，通知客户端
         if (clientCtx.channel().isActive()) {
-            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (String) null))
+            clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        // 目标服务器可能重置连接。
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
-            ctx.close();
+            // 正常的连接重置，不需要打印堆栈
+            logger.debug("Target connection reset");
         } else {
             logger.error("Exception in TargetResponseHandler", cause);
-            ctx.close();
         }
+        ctx.close();
     }
 }

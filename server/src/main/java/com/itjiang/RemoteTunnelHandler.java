@@ -1,5 +1,6 @@
 package com.itjiang;
 
+import io.netty.buffer.Unpooled;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +27,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             case Common.TYPE_CONNECT -> handleConnect(clientCtx, msg);
             case Common.TYPE_DATA -> handleData(clientCtx, msg);
             case Common.TYPE_DISCONNECT -> handleDisconnect(clientCtx);
-            default -> ReferenceCountUtil.release(msg);
+            default -> {}
         }
     }
 
@@ -72,7 +73,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         b.connect(host, port).addListener((ChannelFutureListener) future -> {
             if (future.isSuccess()) {
                 this.targetChannel = future.channel();
-                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS, (String) null));
+                clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT_SUCCESS));
             } else {
                 logger.error("连接远程目标地址失败: {}, cause: {}", hostPort, future.cause().getMessage());
                 String msgData = String.format("连接远程目标地址失败: %s, cause: %s", hostPort, future.cause().getMessage());
@@ -85,19 +86,16 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
 
     private void handleData(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
         if (targetChannel != null && targetChannel.isActive()) {
-            targetChannel.writeAndFlush(msg.getData());
-        } else {
-            // 如果目标通道未准备好，可以选择关闭连接或忽略数据
-            ReferenceCountUtil.release(msg);
+            // 需要交给下一个 Channel 发送，使用带独立的索引和标记的buf视图
+            targetChannel.writeAndFlush(msg.getData().retainedDuplicate());
         }
     }
 
-    // 当 Client 连接的可写状态发生变化（比如 Client 网速慢，导致 Server 发给 Client 的数据积压）
+    // 预防Client数据积压，remote端暂停写入
     @Override
     public void channelWritabilityChanged(ChannelHandlerContext clientCtx) throws Exception {
         boolean canWrite = clientCtx.channel().isWritable();
         if (targetChannel != null) {
-            // 只要 Client 写不动了，就告诉 Target：别读了，暂停！
             targetChannel.config().setAutoRead(canWrite);
         }
         super.channelWritabilityChanged(clientCtx);

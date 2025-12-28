@@ -21,7 +21,7 @@ public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.T
     protected void channelRead0(ChannelHandlerContext ctx, Common.TunnelMsg msg) {
         if (msg.getType() == Common.TYPE_DATA) {
             if (browserChannel.isActive()) {
-                browserChannel.writeAndFlush(msg.getData());
+                browserChannel.writeAndFlush(msg.getData().retainedDuplicate());
             }
         } else if (msg.getType() == Common.TYPE_DISCONNECT) {
             if (browserChannel.isActive()) {

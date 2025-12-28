@@ -24,12 +24,17 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelRead(ChannelHandlerContext browserCtx, Object msg) {
-        if (remoteChannel.isActive()) {
-            if (msg instanceof ByteBuf buf) {
-                remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
-            }
+        if (!browserCtx.channel().isActive()) {
             ReferenceCountUtil.release(msg);
+            browserCtx.close();
+            return;
+        }
+
+        if (msg instanceof ByteBuf buf) {
+            // 手动控制引用计数，直接移交是最优处理
+            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
         } else {
+            logger.warn("收到意外的消息类型: {}", msg.getClass());
             ReferenceCountUtil.release(msg);
         }
     }
@@ -37,7 +42,7 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelInactive(ChannelHandlerContext browserCtx) {
         if (remoteChannel.isActive()) {
-            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT, (String) null))
+            remoteChannel.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DISCONNECT))
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }
