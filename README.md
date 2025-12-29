@@ -1,100 +1,153 @@
-# socks5 代理服务
+# Socks5 代理服务
 
-基于 Netty 和 openSSL 实现的高性能 socks5 代理服务，零拷贝、支持加密通信和远程隧道转发。
+基于 Netty 和 OpenSSL 实现的高性能、加密的 SOCKS5 代理服务，支持远程隧道转发和 GraalVM 原生镜像编译。
 
 ## 功能特性
 
-- 实现 socks5 协议（tcp ipv4）
-- 使用 openSSl 加密通信
-- 支持远程隧道转发
-- 支持远程服务认证功能
-- 跨平台支持（Windows/Linux/Mac）
+*   **高性能:** 基于 Netty 的异步事件驱动架构，实现**零拷贝**，提供高并发、低延迟的网络代理服务。
+*   **加密通信:** 使用 OpenSSL 对通信进行**加密**，保障数据传输的安全性。
+*   **SOCKS5 协议:** 完整实现 SOCKS5 协议（TCP/IPv4）。
+*   **远程隧道转发:** 支持将本地端口的流量转发到远程服务器。
+*   **认证机制:** 支持基于 Token 的认证，确保只有授权的客户端才能连接。
+*   **跨平台:** 支持在 Windows、Linux、macOS 等主流操作系统上运行。
+*   **原生镜像:** 支持使用 GraalVM 将客户端编译成本地**可执行文件**，实现更快的启动速度和更低的内存占用。
 
-## 目录结构
+## 架构设计
 
-```
-├── client/                     # 客户端代码
-├── common/                     # 公共类和工具
-├── server/                     # 服务端代码
-├── test/                       # 测试代码
-├── native-client.sh            # 客户端打包脚本
-├── template-proxy.properties   # 配置文件模版
-├── pom.xml                     # Maven 配置
-```
+本项目采用客户端/服务器架构，主要包含以下三个模块：
+
+*   `common`: 存放客户端和服务器共享的通用代码，例如自定义的隧道消息编解码器。
+*   `server`: 代理服务器端，负责接收客户端的连接，并根据 SOCKS5 协议进行相应的数据转发。
+*   `client`: 代理客户端，负责与本地应用程序和远程代理服务器进行通信，将本地应用程序的流量通过加密隧道转发到代理服务器。
+
+项目在标准的 SOCKS5 协议之上，实现了一套自定义的加密隧道协议。客户端和服务器之间的数据，都会经过 SSL/TLS 加密，并通过自定义的消息格式进行封装和传输。
+
+## 环境要求
+
+*   Java 21 或更高版本
+*   Maven 3.9 或更高版本
+*   OpenSSL（用于生成证书）
+*   GraalVM（可选，用于构建原生镜像）
 
 ## 快速开始
 
-### 环境要求
+### 1. 克隆项目
 
-- Java 21+
-- Maven 3.9+
+```bash
+git clone https://gitee.com/j-jiang/socks5.git
+cd socks5
+```
 
-### 构建项目
+### 2. 配置
+
+将 `template-proxy.properties` 文件复制为 `proxy.properties`，并根据您的需求修改其中的配置项。
+
+```bash
+cp template-proxy.properties proxy.properties
+```
+
+### 3. 构建项目
 
 ```bash
 mvn clean package
 ```
 
-### 启动服务端
+### 4. 启动服务端
 
 ```bash
 java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 ```
 
-### 启动客户端
+### 5. 启动客户端
 
 ```bash
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar
 ```
-或者
-```bash
-cd client/target/ && ./client
-```
 
 ## 配置说明
 
-配置文件位于 `template-proxy.properties`，主要配置项包括：
+配置文件为 `proxy.properties`，主要配置项如下：
 
 ```properties
-# 服务端地址和端口
+# 服务端地址
 server.host=127.0.0.1
+
+# 服务端端口
 server.port=1080
 
-# 本地监听端口
+# 本地监听端口（客户端使用）
 local.port=1081
 
-# 认证 token
+# 认证 Token
 auth.token=your-secret-token
 
-# 服务端证书地址
+# 服务端证书路径
 server.cert.path=./server.crt
+
+# 服务端私钥路径
 server.key.path=./server.key
 ```
 
-## 使用示例
+## GraalVM 原生镜像
 
-1. 修改双端通用配置文件 `template-proxy.properties` -> `proxy.properties`
-2. 启动服务端和客户端
-3. 配置浏览器或其他应用程序使用 socks5 代理
-4. 开始加密的代理连接
+本项目支持使用 GraalVM 将客户端编译成本地可执行文件，从而获得更快的启动速度和更低的内存占用。
 
-## 更多
-长期运行前，建议在启动参数中加上：
+### 1. 安装 GraalVM
+
+请参考 [GraalVM 官方文档](https://www.graalvm.org/downloads/) 进行安装，并确保 `native-image` 组件可用。
+
+### 2. 构建原生镜像
+
+在项目根目录下，执行以下命令：
+
+```bash
+sh client-native-image-config-generate.sh
+```
+这将运行一个beta版本应用，请尽可能全面的进行回归测试，以便在结束后生成更全面的配置文件。
+
+然后运行
+```bash
+sh native-client.sh
+```
+构建成功后，将在 `client/target/` 目录下生成一个与您的操作系统对应的可执行文件（例如，在 macOS aarch64 架构下，会生成名为 `client` 的可执行文件）。
+
+### 3. 运行原生镜像
+
+```bash
+cd client/target/
+./client
+```
+
+## 开发指南
+
+### 生成自签名证书
+
+您可以使用 OpenSSL 生成自签名的证书和私钥，用于测试和开发。
+
+1.  **生成私钥:**
+
+    ```shell
+    openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048
+    ```
+
+2.  **生成证书:**
+
+    ```shell
+    openssl req -new -x509 -key server.key -out server.crt -days 3650 -subj "/CN=MyTunnelServer"
+    ```
+
+### 内存泄漏检测
+
+Netty 提供了强大的内存泄漏检测工具。在开发和测试阶段，建议开启此功能，以确保代码的健壮性。
+
+在启动客户端或服务器时，添加以下 JVM 参数：
+
+```bash
 -Dio.netty.leakDetection.level=PARANOID
-让它跑几天。如果日志里没有出现 LEAK: ByteBuf.release() was not called，那就可以放心地把它部署到服务器上（生产环境可以去掉这个参数以节省性能）。
+```
 
-1. 生成私钥
-```shell
-openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048
-```
-2. 生成证书 (CMD 中 -subj 参数不需要双斜杠)
-```shell
-openssl req -new -x509 -key server.key -out server.crt -days 3650 -subj "/CN=MyTunnelServer"
-```
-```shell
-# 强制小内存下运行，会使gc更频繁 -64M
-client.exe -Xmx64m
-```
+如果程序运行一段时间后，日志中没有出现 `LEAK: ByteBuf.release() was not called` 的信息，那么说明您的代码很可能没有内存泄漏问题。在生产环境中，可以移除此参数以提升性能。
+
 ## 许可协议
 
-本项目遵循 Apache-2.0 许可协议。
+本项目遵循 [Apache-2.0](LICENSE) 许可协议。
