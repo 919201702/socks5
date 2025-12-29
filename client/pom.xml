@@ -106,9 +106,45 @@
                 </executions>
             </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>graalvm-config/**</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources/graalvm-config/${graalvm.config.dir}</directory>
+            </resource>
+        </resources>
     </build>
 
     <profiles>
+        <!-- Profile for Windows -->
+        <profile>
+            <id>windows</id>
+            <activation>
+                <os>
+                    <family>windows</family>
+                </os>
+            </activation>
+            <properties>
+                <graalvm.config.dir>windows-x86_64</graalvm.config.dir>
+            </properties>
+        </profile>
+
+        <!-- Profile for macOS -->
+        <profile>
+            <id>mac</id>
+            <activation>
+                <os>
+                    <family>mac</family>
+                </os>
+            </activation>
+            <properties>
+                <graalvm.config.dir>macos-aarch_64</graalvm.config.dir>
+            </properties>
+        </profile>
         <profile>
             <id>native</id>
             <build>

@@ -19,6 +19,8 @@ public final class Config {
     private static final int DEFAULT_SERVER_PORT = 58001;
     private static final int DEFAULT_LOCAL_PORT = 58080;
     private static final String DEFAULT_SERVER_HOST = "127.0.0.1";
+    private static final String DEFAULT_SERVER_CERT_PATH = "./server.crt";
+    private static final String DEFAULT_SERVER_KEY_PATH = "./server.key";
 
     // --- 配置项 ---
     public static final int SERVER_PORT;
@@ -26,7 +28,7 @@ public final class Config {
     public static final int CLIENT_LOCAL_PORT;
     public static final String AUTH_TOKEN;
     public static final File SERVER_CERT; // server.crt
-    public static File SERVER_KEY; // server.key
+    public static final File SERVER_KEY; // server.key
     static {
         Properties props = new Properties();
         try (InputStream input = new FileInputStream("proxy.properties")) {
@@ -38,14 +40,21 @@ public final class Config {
         SERVER_HOST = props.getProperty("server.host", DEFAULT_SERVER_HOST);
 
         try {
-            SERVER_CERT = new File(props.getProperty("server.cert.path"));
+            String serverCertPath = props.getProperty("server.cert.path");
+            if (serverCertPath != null && !serverCertPath.isBlank()) {
+                SERVER_CERT = new File(serverCertPath);
+            } else {
+                SERVER_CERT = new File(DEFAULT_SERVER_CERT_PATH);
+            }
         } catch (Exception e) {
             throw new RuntimeException("配置错误: 读取 server.cert.path 失败");
         }
         try {
             String serverKeyPath = props.getProperty("server.key.path");
-            if (serverKeyPath != null && !serverKeyPath.isEmpty()) {
+            if (serverKeyPath != null && !serverKeyPath.isBlank()) {
                 SERVER_KEY = new File(serverKeyPath);
+            } else {
+                SERVER_KEY = new File(DEFAULT_SERVER_KEY_PATH);
             }
         } catch (Exception e) {
             throw new RuntimeException("配置错误: 读取 server.key.path 失败");
