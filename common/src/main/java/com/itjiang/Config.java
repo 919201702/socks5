@@ -34,7 +34,7 @@ public final class Config {
     public static final File SERVER_KEY; // server.key
     static {
         Properties props = new Properties();
-        try (InputStream input = new FileInputStream("proxy.properties")) {
+        try (InputStream input = new FileInputStream(System.getProperty("config", "proxy.properties"))) {
             props.load(input);
         } catch (IOException ex) {
             throw new RuntimeException("读取配置文件失败，务必检查 proxy.properties 文件是否存在于程序运行目录下", ex);
@@ -63,10 +63,10 @@ public final class Config {
             throw new RuntimeException("配置错误: 读取 server.key.path 失败");
         }
 
-        CLIENT_LOCAL_PORT = Integer.parseInt(props.getProperty("client_local.port", String.valueOf(DEFAULT_LOCAL_PORT)));
+        CLIENT_LOCAL_PORT = Integer.parseInt(props.getProperty("client.local.port", String.valueOf(DEFAULT_LOCAL_PORT)));
 
         CLIENT_AUTH_TOKEN = props.getProperty("client.auth.token");
-        Objects.requireNonNull(CLIENT_AUTH_TOKEN, "配置错误: auth.token 不能为空");
+        Objects.requireNonNull(CLIENT_AUTH_TOKEN, "配置错误: client.auth.token 不能为空");
 
         String serverAuthTokenListStr = props.getProperty("server.auth.token.list", "");
         SERVER_AUTH_TOKEN_LIST = Arrays.stream(serverAuthTokenListStr.split(",")).toList();
