@@ -18,7 +18,7 @@ import java.nio.charset.StandardCharsets;
 public class MonitorDashboard {
 
     private static final Logger logger = LoggerFactory.getLogger(MonitorDashboard.class);
-    private static final int PORT = 80; // 监控端口
+    private static final int PORT = 443; // 监控端口
     private static final Gson GSON = new GsonBuilder()
             .setPrettyPrinting()
             .disableHtmlEscaping()
