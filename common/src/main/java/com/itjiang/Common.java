@@ -20,7 +20,6 @@ public class Common {
     public static final byte TYPE_CONNECT_SUCCESS = 5;
     public static final byte TYPE_CONNECT_FAIL = 6;
 
-    // --- TunnelMsg 对象定义 (保持不变) ---
     public static class TunnelMsg extends AbstractReferenceCounted {
         private final byte type;
         private final ByteBuf data;

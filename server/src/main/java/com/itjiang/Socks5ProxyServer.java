@@ -2,6 +2,7 @@ package com.itjiang;
 
 import javax.net.ssl.SSLException;
 
+import com.itjiang.web.MonitorDashboard;
 import io.netty.handler.codec.http2.Http2SecurityUtil;
 import io.netty.handler.ssl.*;
 import org.slf4j.Logger;
@@ -19,6 +20,8 @@ public class Socks5ProxyServer {
 
     private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyServer.class);
     public static void main(String[] args) {
+        // 启动监控面板
+        MonitorDashboard.start();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         final SslContext sslCtx;
@@ -53,6 +56,7 @@ public class Socks5ProxyServer {
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
+            Monitor.shutdown();
         }
     }
 }

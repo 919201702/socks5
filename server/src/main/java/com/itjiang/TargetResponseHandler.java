@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
+import static com.itjiang.Monitor.TOKEN_KEY;
+
 public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(TargetResponseHandler.class);
@@ -28,6 +30,10 @@ public class TargetResponseHandler extends ChannelInboundHandlerAdapter {
         }
 
         if (msg instanceof ByteBuf buf) {
+            String token = clientCtx.channel().attr(TOKEN_KEY).get();
+            if (token != null) {
+                Monitor.recordOutbound(token, buf.readableBytes());
+            }
             // 手动控制引用计数，直接移交是最优处理
             clientCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, buf));
         } else {

@@ -32,7 +32,8 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         String token = msg.getDataAsString();
         if (Config.SERVER_AUTH_TOKEN_LIST.contains(token)) {
             authenticated = true;
-            logger.info("新的客户端连接: {}", clientCtx.channel().remoteAddress());
+            clientCtx.pipeline().addBefore(clientCtx.name(), "trafficMonitorHandler", new TrafficMonitorHandler(token));
+            logger.info("新的客户端连接: {}, Token: {}", clientCtx.channel().remoteAddress(), token);
         } else {
             logger.warn("非法客户端连接: {}", clientCtx.channel().remoteAddress());
             Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, "token验证失败");
