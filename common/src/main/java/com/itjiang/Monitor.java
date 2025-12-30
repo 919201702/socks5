@@ -50,7 +50,6 @@ public final class Monitor {
                 i.addAndGet(bytes);
                 return i;
             }).orElse(new AtomicLong(bytes)));
-            // 修正笔误：这里应该是累加 READ_BYTES
             GLOBAL_TOTAL_READ_BYTES.addAndGet(bytes);
         });
     }
