@@ -30,11 +30,27 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
     @Override
     protected void channelRead0(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
         if (request.type() == Socks5CommandType.CONNECT) {
+            if (shouldBlock(browserCtx, request)) {
+                return; // 如果被屏蔽，直接返回，不执行后续连接
+            }
             connectToRemoteServer(browserCtx, request);
         } else {
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.COMMAND_UNSUPPORTED, request.dstAddrType()));
             browserCtx.close();
         }
+    }
+
+    private boolean shouldBlock(ChannelHandlerContext ctx, Socks5CommandRequest request) {
+        // 调用 HostFlitterUtil 检查
+        if (HostFlitterUtil.blockHost(request.dstAddr())) {
+            logger.info("🚫 拦截恶意域名: {}", request.dstAddr());
+
+            // 拒绝
+            ctx.writeAndFlush(new DefaultSocks5CommandResponse(
+                    Socks5CommandStatus.FORBIDDEN, request.dstAddrType())).addListener(ChannelFutureListener.CLOSE);
+            return true;
+        }
+        return false;
     }
 
     private void connectToRemoteServer(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
