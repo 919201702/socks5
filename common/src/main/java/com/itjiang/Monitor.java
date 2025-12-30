@@ -1,6 +1,6 @@
 package com.itjiang;
 
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.*;
@@ -69,28 +69,12 @@ public final class Monitor {
      * 获取所有监控数据的快照，用于序列化
      * @return 包含全局和各token流量的Map
      */
-    public static Map<String, Object> getStats() {
-        Map<String, Object> stats = new HashMap<>();
-
-        // 全局统计
-        Map<String, String> globalStats = new HashMap<>();
-        globalStats.put("totalInboundBytes", getAllInboundDetail());
-        globalStats.put("totalOutboundBytes", getAllOutboundDetail());
-        stats.put("global", globalStats);
-
-        // Token维度统计
-        Map<String, Map<String, String>> tokenStats = new HashMap<>();
-        Stream.concat(inBoundStatsMap.keySet().stream(), outBoundStatsMap.keySet().stream())
-              .distinct()
-              .forEach(token -> {
-                  Map<String, String> singleTokenStat = new HashMap<>();
-                  singleTokenStat.put("inboundBytes", getInboundDetail(token));
-                  singleTokenStat.put("outboundBytes", getOutboundDetail(token));
-                  tokenStats.put(token, singleTokenStat);
-              });
-        stats.put("tokens", tokenStats);
-
-        return stats;
+    public static Detail getStats() {
+        Statistics global = new Statistics(getAllInboundDetail(), getAllOutboundDetail(), "global");
+        List<Statistics> tokens = Stream.concat(inBoundStatsMap.keySet().stream(), outBoundStatsMap.keySet().stream())
+                .distinct()
+                .map(token -> new Statistics(getInboundDetail(token), getOutboundDetail(token), token)).toList();
+        return new Detail(global, tokens);
     }
 
 
@@ -141,4 +125,7 @@ public final class Monitor {
             return (bytes / (1024L * 1024 * 1024 * 1024)) + " tb";
         }
     }
+
+    public record Statistics(String inboundBytes, String outboundBytes, String token) { }
+    public record Detail(Statistics global, List<Statistics> tokens) { }
 }
