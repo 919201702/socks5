@@ -1,5 +1,7 @@
 package com.itjiang;
 
+import javax.net.ssl.SSLException;
+
 import io.netty.handler.codec.http2.Http2SecurityUtil;
 import io.netty.handler.ssl.*;
 import org.slf4j.Logger;
@@ -16,15 +18,20 @@ import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 public class Socks5ProxyServer {
 
     private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyServer.class);
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        final SslContext sslCtx;
         try {
-            SslContext sslCtx = SslContextBuilder.forServer(Config.SERVER_CERT, Config.SERVER_KEY)
+            sslCtx = SslContextBuilder.forServer(Config.SERVER_CERT, Config.SERVER_KEY)
                     .sslProvider(SslProvider.OPENSSL)
                     .ciphers(Http2SecurityUtil.CIPHERS, SupportedCipherSuiteFilter.INSTANCE)
                     .applicationProtocolConfig(ApplicationProtocolConfig.DISABLED)
                     .build();
+        } catch (SSLException e) {
+            throw new RuntimeException("ssl证书配置异常", e);
+        }
+        try {
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup, workerGroup)
                     .channel(NioServerSocketChannel.class)
@@ -41,7 +48,7 @@ public class Socks5ProxyServer {
 
             logger.info("代理服务器启动，监听端口: {}", Config.SERVER_PORT);
             b.bind(Config.SERVER_PORT).sync().channel().closeFuture().sync();
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             bossGroup.shutdownGracefully();

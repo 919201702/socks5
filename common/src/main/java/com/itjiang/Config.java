@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 
@@ -26,7 +28,8 @@ public final class Config {
     public static final int SERVER_PORT;
     public static final String SERVER_HOST;
     public static final int CLIENT_LOCAL_PORT;
-    public static final String AUTH_TOKEN;
+    public static final String CLIENT_AUTH_TOKEN;
+    public static final List<String> SERVER_AUTH_TOKEN_LIST;
     public static final File SERVER_CERT; // server.crt
     public static final File SERVER_KEY; // server.key
     static {
@@ -62,7 +65,10 @@ public final class Config {
 
         CLIENT_LOCAL_PORT = Integer.parseInt(props.getProperty("client_local.port", String.valueOf(DEFAULT_LOCAL_PORT)));
 
-        AUTH_TOKEN = props.getProperty("auth.token");
-        Objects.requireNonNull(AUTH_TOKEN, "配置错误: auth.token 不能为空");
+        CLIENT_AUTH_TOKEN = props.getProperty("client.auth.token");
+        Objects.requireNonNull(CLIENT_AUTH_TOKEN, "配置错误: auth.token 不能为空");
+
+        String serverAuthTokenListStr = props.getProperty("server.auth.token.list", "");
+        SERVER_AUTH_TOKEN_LIST = Arrays.stream(serverAuthTokenListStr.split(",")).toList();
     }
 }

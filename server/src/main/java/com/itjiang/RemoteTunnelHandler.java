@@ -30,7 +30,7 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
 
     private void handleAuth(ChannelHandlerContext clientCtx, Common.TunnelMsg msg) {
         String token = msg.getDataAsString();
-        if (Config.AUTH_TOKEN.equals(token)) {
+        if (Config.SERVER_AUTH_TOKEN_LIST.contains(token)) {
             authenticated = true;
             logger.info("新的客户端连接: {}", clientCtx.channel().remoteAddress());
         } else {

@@ -46,7 +46,7 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
                     .trustManager(Config.SERVER_CERT)
                     .build();
         } catch (SSLException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("ssl证书配置异常", e);
         }
         Bootstrap b = new Bootstrap();
         b.group(browserCtx.channel().eventLoop())

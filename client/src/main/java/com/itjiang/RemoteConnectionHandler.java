@@ -31,7 +31,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     // 当连接到远程服务器成功后
     @Override
     public void channelActive(ChannelHandlerContext remoteCtx) {
-        remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.AUTH_TOKEN));
+        remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.CLIENT_AUTH_TOKEN));
 
         String targetAddr = String.format("%s:%d", socksRequest.dstAddr(), socksRequest.dstPort());
         logger.info("浏览器请求连接: {}", targetAddr);
