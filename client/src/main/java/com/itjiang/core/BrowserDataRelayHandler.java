@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.core;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -11,6 +11,8 @@ import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.itjiang.Common;
 
 // 将浏览器数据 -> 加密 -> 发送到远程服务器
 public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {

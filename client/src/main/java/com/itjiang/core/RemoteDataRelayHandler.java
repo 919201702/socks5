@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.core;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
@@ -8,6 +8,8 @@ import java.io.IOException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.itjiang.Common;
 
 public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.TunnelMsg> {
     private static final Logger logger = LoggerFactory.getLogger(RemoteDataRelayHandler.class);

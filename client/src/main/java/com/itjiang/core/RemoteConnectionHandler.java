@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.core;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFutureListener;
@@ -15,6 +15,9 @@ import java.nio.charset.StandardCharsets;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.itjiang.Common;
+import com.itjiang.Config;
 
 // 处理与远程服务器的隧道通信
 public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.TunnelMsg> {

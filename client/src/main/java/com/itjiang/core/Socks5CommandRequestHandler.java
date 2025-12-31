@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.core;
 
 import static com.itjiang.Config.*;
 
@@ -22,6 +22,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLException;
 
+import com.itjiang.Common;
+import com.itjiang.Config;
+import com.itjiang.gui.App;
+import com.itjiang.utils.HostFlitterUtil;
+
 @ChannelHandler.Sharable
 public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Socks5CommandRequest> {
     private static final Logger logger = LoggerFactory.getLogger(Socks5CommandRequestHandler.class);
@@ -42,7 +47,7 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
 
     private boolean shouldBlock(ChannelHandlerContext ctx, Socks5CommandRequest request) {
         // 调用 HostFlitterUtil 检查
-        if (HostFlitterUtil.blockHost(request.dstAddr())) {
+        if (App.isFilterEnabled && HostFlitterUtil.blockHost(request.dstAddr())) {
             logger.info("🚫 拦截恶意域名: {}", request.dstAddr());
 
             // 拒绝

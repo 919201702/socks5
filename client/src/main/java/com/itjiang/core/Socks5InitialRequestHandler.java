@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.core;
 
 import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;

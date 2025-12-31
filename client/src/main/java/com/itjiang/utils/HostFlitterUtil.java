@@ -1,4 +1,4 @@
-package com.itjiang;
+package com.itjiang.utils;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,21 +14,10 @@ public class HostFlitterUtil {
 
     private static final String CONFIG_FILE_NAME = "block.conf";
     private static final Path CONFIG_DIR = Paths.get(".");
-
-    // 使用 volatile 保证可见性，使用 Set 提高查询效率 (O(1))
-    // 初始化为空 Set 防止空指针
     private static volatile Set<String> blockedDomains = new HashSet<>();
 
-    /**
-     * 启动监听
-     */
-    static {
-        start();
-    }
-    public static void start() {
-        // 首次加载
+    static  {
         loadConfig();
-        // 启动虚拟线程监听
         Thread.ofVirtual().name("config-watcher").start(HostFlitterUtil::startWatching);
     }
 
@@ -41,17 +30,14 @@ public class HostFlitterUtil {
             return false;
         }
 
-        // 获取当前的配置引用（因为 blockedDomains 是 volatile 的，读取是原子的）
         Set<String> currentBlockList = blockedDomains;
 
-        // 1. 直接匹配完整域名
+        // 匹配完整域名
         if (currentBlockList.contains(host)) {
             return true;
         }
 
-        // 2. 泛域名匹配 (逐级向上查找)
-        // 例如：host 是 "a.b.baidu.com"
-        // 检查 "b.baidu.com" -> 检查 "baidu.com" -> 检查 "com"
+        // 泛域名匹配，逐级向上查找
         String nextDomain = host;
         int dotIndex;
         while ((dotIndex = nextDomain.indexOf('.')) != -1) {
@@ -108,14 +94,12 @@ public class HostFlitterUtil {
             Set<String> newSet = new HashSet<>(lines.size());
 
             for (String line : lines) {
-                // 简单的解析逻辑
                 String domain = parseDomain(line);
                 if (domain != null && !domain.isEmpty()) {
                     newSet.add(domain);
                 }
             }
 
-            // 原子替换：将引用指向新的 Set
             blockedDomains = newSet;
             logger.info("配置已更新，当前加载规则数: {}", newSet.size());
 
@@ -134,7 +118,6 @@ public class HostFlitterUtil {
         if (trimLine.isEmpty() || trimLine.startsWith("#")) {
             return null;
         }
-
         // 处理 dnsmasq 格式: address=/domain/
         if (trimLine.startsWith("address=/")) {
             int start = "address=/".length();
@@ -143,10 +126,7 @@ public class HostFlitterUtil {
                 return trimLine.substring(start, end);
             }
         }
-
-        // 如果文件里混杂了纯域名，也可以直接返回
-        // return trimLine;
-
-        return null;
+        // 纯域名，直接返回
+         return trimLine;
     }
 }
