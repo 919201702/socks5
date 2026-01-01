@@ -168,10 +168,13 @@
                             <buildArgs>
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
-                                <buildArg>--enable-url-protocols=https</buildArg>
+                                <buildArg>--enable-url-protocols=http,https</buildArg>
+                                <buildArg>-H:+AddAllCharsets</buildArg>
+<!--                                <buildArg>&#45;&#45;report-unsupported-elements-at-runtime</buildArg>-->
                                 <!-- 禁用 Netty 的 FFM 特性，避免链接器错误 -->
                                 <buildArg>-Dio.netty.incubator.foreign.Foreign.isEnabled=false</buildArg>
                                 <buildArg>-H:IncludeResources=simplelogger.properties</buildArg>
+                                <buildArg>-H:+JNI</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>
