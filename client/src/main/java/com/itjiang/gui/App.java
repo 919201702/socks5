@@ -7,6 +7,8 @@ import com.itjiang.core.ClientBoot; // 假设这是你的类
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -19,6 +21,7 @@ public class App extends JFrame {
     private JTextPane logPane;
     private final JScrollPane scrollPane;
     private final JToggleButton filterToggleBtn;
+    private final JToggleButton linkedBtn;
 
     // 样式定义
     private SimpleAttributeSet infoStyle;
@@ -29,6 +32,7 @@ public class App extends JFrame {
 
     // 过滤控制标志
     public static volatile boolean isFilterEnabled = true;
+    public static volatile boolean proxyServerEnabled = true;
 
     public App() {
         // 1. UI 初始化
@@ -41,7 +45,7 @@ public class App extends JFrame {
         initStyles();
 
         // --- 顶部控制栏 ---
-        filterToggleBtn = new JToggleButton("过滤中");
+        filterToggleBtn = new JToggleButton("域名过滤中");
         filterToggleBtn.setFont(new Font("Microsoft YaHei UI", Font.BOLD, 12));
         filterToggleBtn.setBackground(new Color(45, 45, 45)); // 深色按钮
         filterToggleBtn.setForeground(Color.GREEN);
@@ -53,6 +57,14 @@ public class App extends JFrame {
         clearBtn.setFocusPainted(false);
         clearBtn.addActionListener(e -> logPane.setText(""));
 
+        linkedBtn = new JToggleButton("连接中");
+        linkedBtn.setFont(new Font("Microsoft YaHei UI", Font.BOLD, 12));
+        linkedBtn.setBackground(new Color(45, 45, 45)); // 深色按钮
+        linkedBtn.setForeground(Color.GREEN);
+        linkedBtn.setFocusPainted(true);
+        linkedBtn.setSelected(true);
+        linkedBtn.addActionListener(this::linkRemoteServer);
+
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 5));
         topPanel.setBackground(new Color(60, 63, 65)); // 深灰色背景
         topPanel.setBorder(BorderFactory.createEmptyBorder(5, 5, 5, 5));
@@ -62,6 +74,7 @@ public class App extends JFrame {
         topPanel.add(label);
         topPanel.add(filterToggleBtn);
         topPanel.add(clearBtn);
+        topPanel.add(linkedBtn);
         add(topPanel, BorderLayout.NORTH);
 
         // --- 中间日志显示区域 (JTextPane) ---
@@ -83,11 +96,19 @@ public class App extends JFrame {
 
         add(scrollPane, BorderLayout.CENTER);
 
-        // 2. 重定向 System.err
+        // 重定向 System.err
         redirectSystemErr();
 
-        // 3. 启动客户端
-        startClient();
+        // 启用抗锯齿，让文字更清晰
+        System.setProperty("awt.useSystemAAFontSettings", "on");
+        System.setProperty("swing.aatext", "true");
+
+        try {
+            // 尝试使用系统原生风格（Windows下更自然）
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception ignored) {}
+        // 启动客户端
+        bootClient(true);
     }
 
     private void initStyles() {
@@ -112,12 +133,23 @@ public class App extends JFrame {
     private void toggleFilter() {
         isFilterEnabled = filterToggleBtn.isSelected();
         if (isFilterEnabled) {
-            filterToggleBtn.setText("过滤中");
+            filterToggleBtn.setText("域名过滤中");
             filterToggleBtn.setForeground(Color.GREEN);
         } else {
             filterToggleBtn.setText("已暂停");
             filterToggleBtn.setForeground(Color.GRAY);
         }
+    }
+    private void linkRemoteServer(ActionEvent actionEvent) {
+        proxyServerEnabled = linkedBtn.isSelected();
+        if (proxyServerEnabled) {
+            linkedBtn.setText("连接中");
+            linkedBtn.setForeground(Color.GREEN);
+        } else {
+            linkedBtn.setText("连接关闭");
+            linkedBtn.setForeground(Color.GRAY);
+        }
+        bootClient(proxyServerEnabled);
     }
 
     private void redirectSystemErr() {
@@ -163,7 +195,7 @@ public class App extends JFrame {
         try {
             doc.insertString(doc.getLength(), msg, currentStyle);
         } catch (BadLocationException e) {
-            e.printStackTrace();
+            logger.error("插入文本失败", e);
         }
 
         // 4. 只有当用户原本就在最底部时，才自动滚动；
@@ -176,22 +208,13 @@ public class App extends JFrame {
         }
     }
 
-    private void startClient() {
-        Thread.ofVirtual().name("Log-Simulator").start(() -> {
-            ClientBoot.boot(null);
+    private synchronized void bootClient(boolean start) {
+        Thread.ofVirtual().name("AWT-Virtual").start(() -> {
+            if (start) {
+                ClientBoot.boot(null);
+            } else {
+                ClientBoot.close();
+            }
         });
-    }
-
-    public static void main(String[] args) {
-        // 启用抗锯齿，让文字更清晰
-        System.setProperty("awt.useSystemAAFontSettings", "on");
-        System.setProperty("swing.aatext", "true");
-
-        try {
-            // 尝试使用系统原生风格（Windows下更自然）
-            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (Exception ignored) {}
-
-        SwingUtilities.invokeLater(() -> new App().setVisible(true));
     }
 }

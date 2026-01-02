@@ -1,5 +1,7 @@
 package com.itjiang.core;
 
+import com.itjiang.utils.HostFlitterUtil;
+import io.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,8 +19,9 @@ import io.netty.handler.codec.socksx.v5.Socks5ServerEncoder;
 
 public class ClientBoot {
     private static final Logger logger = LoggerFactory.getLogger(ClientBoot.class);
-
+    private static Channel serverChannel;
     public static void boot(String[] args) {
+        HostFlitterUtil.start();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -38,12 +41,18 @@ public class ClientBoot {
                     , Config.CLIENT_LOCAL_PORT
                     , Config.SERVER_HOST
                     , Config.SERVER_PORT);
-            b.bind(Config.CLIENT_LOCAL_PORT).sync().channel().closeFuture().sync();
+            serverChannel = b.bind(Config.CLIENT_LOCAL_PORT).sync().channel();
+            serverChannel.closeFuture().sync();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();
         }
+    }
+    public static void close() {
+        serverChannel.close();
+        HostFlitterUtil.close();
+        logger.info("客户端已关闭");
     }
 }

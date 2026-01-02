@@ -15,10 +15,19 @@ public class HostFlitterUtil {
     private static final String CONFIG_FILE_NAME = "block.conf";
     private static final Path CONFIG_DIR = Paths.get(".");
     private static volatile Set<String> blockedDomains = new HashSet<>();
-
-    static  {
+    private static Thread watcherThread;
+    private static volatile boolean running = true;
+    public static void start()  {
         loadConfig();
-        Thread.ofVirtual().name("config-watcher").start(HostFlitterUtil::startWatching);
+        watcherThread = Thread.ofVirtual().name("config-watcher").start(HostFlitterUtil::startWatching);
+        running = true;
+    }
+
+    public static void close() {
+        running = false;
+        if (watcherThread != null) {
+            watcherThread.interrupt();
+        }
     }
 
     /**
@@ -26,7 +35,7 @@ public class HostFlitterUtil {
      * 支持泛域名匹配：如果 block 了 example.com，那么 ad.example.com 也会返回 true
      */
     public static boolean blockHost(String host) {
-        if (host == null || host.isEmpty()) {
+        if (host == null || host.isEmpty() || !watcherThread.isAlive()) {
             return false;
         }
 
@@ -55,7 +64,7 @@ public class HostFlitterUtil {
             CONFIG_DIR.register(watchService, StandardWatchEventKinds.ENTRY_MODIFY);
             logger.info("开始监听配置文件变动: {}", CONFIG_DIR.toAbsolutePath());
 
-            while (true) {
+            while (running) {
                 WatchKey key;
                 try {
                     key = watchService.take();
@@ -101,7 +110,7 @@ public class HostFlitterUtil {
             }
 
             blockedDomains = newSet;
-            logger.info("配置已更新，当前加载规则数: {}", newSet.size());
+            logger.info("配置已更新至内存，当前加载规则数: {}", newSet.size());
 
         } catch (IOException e) {
             logger.error("读取配置文件失败", e);
