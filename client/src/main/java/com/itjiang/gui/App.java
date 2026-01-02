@@ -2,13 +2,12 @@ package com.itjiang.gui;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.itjiang.core.ClientBoot; // 假设这是你的类
+import com.itjiang.core.ClientBoot;
 
 import javax.swing.*;
 import javax.swing.text.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
@@ -30,12 +29,10 @@ public class App extends JFrame {
     private SimpleAttributeSet debugStyle;
     private SimpleAttributeSet defaultStyle;
 
-    // 过滤控制标志
     public static volatile boolean isFilterEnabled = true;
     public static volatile boolean proxyServerEnabled = true;
 
     public App() {
-        // 1. UI 初始化
         setTitle("Socks5 Tunnel Monitor");
         setSize(900, 650);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -80,7 +77,7 @@ public class App extends JFrame {
         // --- 中间日志显示区域 (JTextPane) ---
         logPane = new JTextPane();
         logPane.setEditable(false);
-        logPane.setFont(new Font("JetBrains Mono", Font.PLAIN, 13)); // 推荐等宽字体
+        logPane.setFont(new Font("JetBrains Mono", Font.PLAIN, 13)); // 等宽字体
         if (logPane.getFont().getFamily().equals("Dialog")) {
             logPane.setFont(new Font("Consolas", Font.PLAIN, 14)); // 备选
         }
@@ -104,7 +101,6 @@ public class App extends JFrame {
         System.setProperty("swing.aatext", "true");
 
         try {
-            // 尝试使用系统原生风格（Windows下更自然）
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception ignored) {}
         // 启动客户端
@@ -173,12 +169,12 @@ public class App extends JFrame {
      * 核心方法：带颜色解析 + 智能滚动的追加逻辑
      */
     private void appendToPane(String msg) {
-        // 1. 判断当前是否在底部 (智能滚动核心)
+        // 1判断当前是否在底部 (智能滚动核心)
         JScrollBar verticalBar = scrollPane.getVerticalScrollBar();
         // 允许 10px 的误差，因为 swing 这里的计算有时候有微小偏差
         boolean isAtBottom = (verticalBar.getValue() + verticalBar.getVisibleAmount() >= verticalBar.getMaximum() - 20);
 
-        // 2. 解析日志级别并选择样式
+        // 解析日志级别并选择样式
         SimpleAttributeSet currentStyle = defaultStyle;
         if (msg.contains("INFO")) {
             currentStyle = infoStyle;
@@ -190,7 +186,7 @@ public class App extends JFrame {
             currentStyle = debugStyle;
         }
 
-        // 3. 插入文本
+        // 插入文本
         StyledDocument doc = logPane.getStyledDocument();
         try {
             doc.insertString(doc.getLength(), msg, currentStyle);
@@ -198,8 +194,8 @@ public class App extends JFrame {
             logger.error("插入文本失败", e);
         }
 
-        // 4. 只有当用户原本就在最底部时，才自动滚动；
-        //    如果用户滑上去看历史了，就不要打扰他。
+        // 只有当用户原本就在最底部时，才自动滚动
+        //    如果用户滑上去看历史了，不管他
         if (isAtBottom) {
             // 必须 invokeLater 否则 scrollTo 可能会因为文档还没渲染完而计算错误
             SwingUtilities.invokeLater(() -> {
