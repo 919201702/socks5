@@ -112,17 +112,18 @@ public final class Monitor {
     }
 
     private static String formatBytes(long bytes) {
-        if (bytes < 1024) {
-            return bytes + " byte";
-        } else if (bytes < 1024 * 1024) {
-            return (bytes / 1024) + " kb";
-        } else if (bytes < 1024 * 1024 * 1024) {
-            return (bytes / (1024 * 1024)) + " mb";
-        } else if (bytes < 1024L * 1024 * 1024 * 1024) {
-            return (bytes / (1024 * 1024 * 1024)) + " gb";
-        } else {
-            return (bytes / (1024L * 1024 * 1024 * 1024)) + " tb";
-        }
+        long kbTotal = bytes / 1024;
+        if (kbTotal == 0) return "0 kb";
+        long tb = kbTotal / (1024L * 1024 * 1024);
+        long gb = (kbTotal / (1024 * 1024)) % 1024;
+        long mb = (kbTotal / 1024) % 1024;
+        long kb = kbTotal % 1024;
+        StringBuilder sb = new StringBuilder();
+        if (tb > 0) sb.append(tb).append(" tb ");
+        if (gb > 0) sb.append(gb).append(" gb ");
+        if (mb > 0) sb.append(mb).append(" mb ");
+        if (kb > 0) sb.append(kb).append(" kb");
+        return sb.toString().trim();
     }
 
     public record Statistics(String inboundBytes, String outboundBytes, String token) { }
