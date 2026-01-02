@@ -170,11 +170,14 @@
                                 <buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
                                 <buildArg>--enable-url-protocols=http,https</buildArg>
                                 <buildArg>-H:+AddAllCharsets</buildArg>
+                                <buildArg>-H:IncludeResourceBundles=sun.awt.resources.awt</buildArg>
 <!--                                <buildArg>&#45;&#45;report-unsupported-elements-at-runtime</buildArg>-->
                                 <!-- 禁用 Netty 的 FFM 特性，避免链接器错误 -->
                                 <buildArg>-Dio.netty.incubator.foreign.Foreign.isEnabled=false</buildArg>
                                 <buildArg>-H:IncludeResources=simplelogger.properties</buildArg>
                                 <buildArg>-H:+JNI</buildArg>
+                                <buildArg>-H:NativeLinkerOption=/SUBSYSTEM:WINDOWS</buildArg>
+                                <buildArg>-H:NativeLinkerOption=/ENTRY:mainCRTStartup</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>

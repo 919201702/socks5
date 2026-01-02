@@ -164,16 +164,13 @@
 },
 {
   "name":"java.awt.event.KeyEvent",
-  "fields":[{"name":"extendedKeyCode"}, {"name":"keyChar"}, {"name":"keyCode"}, {"name":"primaryLevelUnicode"}, {"name":"rawCode"}, {"name":"scancode"}]
+  "fields":[{"name":"extendedKeyCode"}, {"name":"keyChar"}, {"name":"keyCode"}, {"name":"primaryLevelUnicode"}, {"name":"rawCode"}, {"name":"scancode"}],
+  "methods":[{"name":"<init>","parameterTypes":["java.awt.Component","int","long","int","int","char","int"] }]
 },
 {
   "name":"java.awt.event.MouseEvent",
   "fields":[{"name":"button"}, {"name":"causedByTouchEvent"}, {"name":"x"}, {"name":"y"}],
   "methods":[{"name":"<init>","parameterTypes":["java.awt.Component","int","long","int","int","int","int","int","int","boolean","int"] }]
-},
-{
-  "name":"java.awt.event.MouseWheelEvent",
-  "methods":[{"name":"<init>","parameterTypes":["java.awt.Component","int","long","int","int","int","int","int","int","boolean","int","int","int","double"] }]
 },
 {
   "name":"java.awt.geom.AffineTransform",

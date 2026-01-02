@@ -28,6 +28,9 @@
     "pattern":"java.base:\\Qsun/text/resources/LineBreakIteratorData\\E"
   }]},
   "bundles":[{
+    "name":"com.sun.java.swing.plaf.windows.resources.windows",
+    "classNames":["com.sun.java.swing.plaf.windows.resources.windows", "com.sun.java.swing.plaf.windows.resources.windows_zh_CN"]
+  }, {
     "name":"com.sun.swing.internal.plaf.basic.resources.basic",
     "classNames":["com.sun.swing.internal.plaf.basic.resources.basic", "com.sun.swing.internal.plaf.basic.resources.basic_zh_CN"]
   }, {

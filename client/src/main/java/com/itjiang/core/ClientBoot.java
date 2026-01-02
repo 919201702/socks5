@@ -21,10 +21,6 @@ public class ClientBoot {
     private static final Logger logger = LoggerFactory.getLogger(ClientBoot.class);
     private static Channel serverChannel;
     public static void boot(String[] args) {
-        String classPath = System.getProperty("java.class.path");
-        if (classPath == null || classPath.trim().isEmpty()) {
-            System.setProperty("java.home", ".");
-        }
         HostFlitterUtil.start();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
