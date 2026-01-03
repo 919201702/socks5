@@ -26,6 +26,8 @@
     "pattern":"java.base:\\Qsun/net/idn/uidna.spp\\E"
   }, {
     "pattern":"java.base:\\Qsun/text/resources/LineBreakIteratorData\\E"
+  }, {
+    "pattern":"java.datatransfer:\\Qsun/datatransfer/resources/flavormap.properties\\E"
   }]},
   "bundles":[{
     "name":"com.sun.java.swing.plaf.windows.resources.windows",

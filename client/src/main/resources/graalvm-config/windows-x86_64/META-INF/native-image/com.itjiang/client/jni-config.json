@@ -314,6 +314,10 @@
   "fields":[{"name":"sdCurrent"}]
 },
 {
+  "name":"sun.awt.windows.WClipboard",
+  "methods":[{"name":"lostSelectionOwnershipImpl","parameterTypes":[] }]
+},
+{
   "name":"sun.awt.windows.WComponentPeer",
   "fields":[{"name":"hwnd"}, {"name":"winGraphicsConfig"}],
   "methods":[{"name":"disposeLater","parameterTypes":[] }, {"name":"handleExpose","parameterTypes":["int","int","int","int"] }, {"name":"postEvent","parameterTypes":["java.awt.AWTEvent"] }, {"name":"replaceSurfaceData","parameterTypes":[] }, {"name":"replaceSurfaceDataLater","parameterTypes":[] }]
@@ -333,6 +337,7 @@
 },
 {
   "name":"sun.awt.windows.WFramePeer",
+  "fields":[{"name":"keepOnMinimize"}],
   "methods":[{"name":"getExtendedState","parameterTypes":[] }]
 },
 {
