@@ -24,9 +24,10 @@ public class MonitorDashboard {
             .disableHtmlEscaping()
             .create();
 
-    public static void start() {
+    public static void start(String statsPath) {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         try {
+            Monitor.reloadStats(statsPath);
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup)
              .channel(NioServerSocketChannel.class)
@@ -51,6 +52,7 @@ public class MonitorDashboard {
                     Thread.currentThread().interrupt();
                 } finally {
                     bossGroup.shutdownGracefully();
+                    Monitor.shutdown(statsPath);
                 }
             }).start();
 
@@ -58,6 +60,7 @@ public class MonitorDashboard {
             logger.error("监控面板启动失败", e);
             Thread.currentThread().interrupt();
             bossGroup.shutdownGracefully();
+            Monitor.shutdown(statsPath);
         }
     }
 
