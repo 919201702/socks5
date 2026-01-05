@@ -23,8 +23,7 @@ public class Socks5ProxyServer {
     private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyServer.class);
     private static final AtomicBoolean isCleaned = new AtomicBoolean(false);
     public static void main(String[] args) {
-        String statsPath = "./stats.json";
-        MonitorDashboard.start(statsPath);
+        MonitorDashboard.start();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         final SslContext sslCtx;
@@ -54,53 +53,40 @@ public class Socks5ProxyServer {
 
             logger.info("代理服务器启动，监听端口: {}", Config.SERVER_PORT);
             Channel serverChannel = b.bind(Config.SERVER_PORT).sync().channel();
-            // 注册关闭钩子
-            addShutdownHook(serverChannel, bossGroup, workerGroup, statsPath);
+            addShutdownHook(serverChannel, bossGroup, workerGroup);
             serverChannel.closeFuture().sync();
         } catch (InterruptedException e) {
             logger.error("主线程被中断", e);
             Thread.currentThread().interrupt();
         } finally {
-            cleanResources(null, bossGroup, workerGroup, statsPath);
+            cleanResources(null, bossGroup, workerGroup);
         }
     }
 
-    /**
-     * 注册 JVM 关闭钩子
-     */
-    private static void addShutdownHook(Channel channel, EventLoopGroup bossGroup, EventLoopGroup workerGroup, String statsPath) {
+    private static void addShutdownHook(Channel channel, EventLoopGroup bossGroup, EventLoopGroup workerGroup) {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             logger.info("接收到退出信号(kill -15)，正在执行 Hook 清理...");
-            cleanResources(channel, bossGroup, workerGroup, statsPath);
+            cleanResources(channel, bossGroup, workerGroup);
             logger.info("Hook 清理完成，退出。");
         }));
     }
 
-    /**
-     * 【核心】统一的资源释放方法，保证只执行一次
-     */
-    private static void cleanResources(Channel channel, EventLoopGroup bossGroup, EventLoopGroup workerGroup, String statsPath) {
+    private static void cleanResources(Channel channel, EventLoopGroup bossGroup, EventLoopGroup workerGroup) {
         if (!isCleaned.compareAndSet(false, true)) {
             return;
         }
-
         logger.info("开始释放资源...");
-
-        // 关闭 Channel (如果是 Hook 触发的，这一步其实是为了保险)
         if (channel != null && channel.isOpen()) {
             channel.close();
         }
-
-        // 关闭线程组
         try {
             if (!bossGroup.isShutdown()) bossGroup.shutdownGracefully().sync();
             if (!workerGroup.isShutdown()) workerGroup.shutdownGracefully().sync();
         } catch (InterruptedException e) {
             logger.error("Netty 关闭被中断", e);
         }
-
-        // 保存监控数据 (只会被执行一次，防止文件写入冲突)
-        Monitor.shutdown(statsPath);
+        // 关闭监控资源
+        MonitorDashboard.close();
         logger.info("资源释放完毕。");
     }
 }
