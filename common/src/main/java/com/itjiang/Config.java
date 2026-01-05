@@ -23,6 +23,7 @@ public final class Config {
     private static final String DEFAULT_SERVER_HOST = "127.0.0.1";
     private static final String DEFAULT_SERVER_CERT_PATH = "./server.crt";
     private static final String DEFAULT_SERVER_KEY_PATH = "./server.key";
+    public static final String DEFAULT_SERVER_STATS_PATH = "./stats.json";
 
     // --- 配置项 ---
     public static final int SERVER_PORT;
@@ -32,6 +33,7 @@ public final class Config {
     public static final List<String> SERVER_AUTH_TOKEN_LIST;
     public static final File SERVER_CERT; // server.crt
     public static final File SERVER_KEY; // server.key
+    public static final String SERVER_STATS_PATH;
     static {
         Properties props = new Properties();
         try (InputStream input = new FileInputStream(System.getProperty("config", "proxy.properties"))) {
@@ -70,5 +72,7 @@ public final class Config {
 
         String serverAuthTokenListStr = props.getProperty("server.auth.token.list", "");
         SERVER_AUTH_TOKEN_LIST = Arrays.stream(serverAuthTokenListStr.split(",")).toList();
+
+        SERVER_STATS_PATH = props.getProperty("server.stats.path", DEFAULT_SERVER_STATS_PATH);
     }
 }

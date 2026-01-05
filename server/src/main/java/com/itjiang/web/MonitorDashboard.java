@@ -2,6 +2,7 @@ package com.itjiang.web;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.itjiang.Config;
 import com.itjiang.Monitor;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.Unpooled;
@@ -14,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class MonitorDashboard {
 
@@ -23,11 +25,12 @@ public class MonitorDashboard {
             .setPrettyPrinting()
             .disableHtmlEscaping()
             .create();
-
-    public static void start(String statsPath) {
-        EventLoopGroup bossGroup = new NioEventLoopGroup(1);
+    private static EventLoopGroup bossGroup;
+    private static final AtomicBoolean isCleaned = new AtomicBoolean(false);
+    public static void start() {
+        bossGroup = new NioEventLoopGroup(1);
         try {
-            Monitor.reloadStats(statsPath);
+            Monitor.reloadStats(Config.SERVER_STATS_PATH);
             ServerBootstrap b = new ServerBootstrap();
             b.group(bossGroup)
              .channel(NioServerSocketChannel.class)
@@ -51,17 +54,22 @@ public class MonitorDashboard {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 } finally {
-                    bossGroup.shutdownGracefully();
-                    Monitor.shutdown(statsPath);
+                    close();
                 }
             }).start();
 
         } catch (InterruptedException e) {
             logger.error("监控面板启动失败", e);
-            Thread.currentThread().interrupt();
-            bossGroup.shutdownGracefully();
-            Monitor.shutdown(statsPath);
+            close();
         }
+    }
+    public static void close() {
+        if (!isCleaned.compareAndSet(false, true)) {
+            return;
+        }
+        Thread.currentThread().interrupt();
+        bossGroup.shutdownGracefully();
+        Monitor.shutdown(Config.SERVER_STATS_PATH);
     }
 
     private static class MonitorHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
