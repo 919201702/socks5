@@ -58,8 +58,7 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
                         // 连接远程服务器的 pipeline
                         ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), SERVER_HOST, SERVER_PORT));
                         ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
-                        ch.pipeline().addLast(new Common.TunnelMsgDecoder());
-                        ch.pipeline().addLast(new Common.TunnelMsgEncoder());
+                        ch.pipeline().addLast(new Common.TunnelMsgCodec());
                         ch.pipeline().addLast(new RemoteConnectionHandler(browserCtx, request));
                     }
                 });

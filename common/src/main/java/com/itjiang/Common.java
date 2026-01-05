@@ -3,8 +3,10 @@ package com.itjiang;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
+import io.netty.handler.codec.ByteToMessageCodec;
 import io.netty.handler.codec.ByteToMessageDecoder;
 import io.netty.handler.codec.MessageToByteEncoder;
+import io.netty.handler.codec.MessageToMessageCodec;
 import io.netty.util.AbstractReferenceCounted;
 import io.netty.util.ReferenceCounted;
 
@@ -45,19 +47,16 @@ public class Common {
 
     // 序列化，前置依赖LengthFieldBasedFrameDecoder
     // 协议格式: [Length 4][Type 1][Raw Data N]
-    public static class TunnelMsgEncoder extends MessageToByteEncoder<TunnelMsg> {
+    public static class TunnelMsgCodec extends ByteToMessageCodec<TunnelMsg> {
         @Override
-        protected void encode(ChannelHandlerContext ctx, TunnelMsg msg, ByteBuf out) {
+        protected void encode(ChannelHandlerContext ctx, TunnelMsg msg, ByteBuf out) throws Exception {
             int dataLen = msg.getData().readableBytes();
             out.writeInt(1 + dataLen);
             out.writeByte(msg.getType());
             out.writeBytes(msg.getData().duplicate());
         }
-    }
-
-    public static class TunnelMsgDecoder extends ByteToMessageDecoder {
         @Override
-        protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+        protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
             if (!in.isReadable()) return;
             byte type = in.readByte();
             ByteBuf data = in.readRetainedSlice(in.readableBytes());

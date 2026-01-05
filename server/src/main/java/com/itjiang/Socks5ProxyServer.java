@@ -45,8 +45,7 @@ public class Socks5ProxyServer {
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(sslCtx.newHandler(ch.alloc()))
                                     .addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4))
-                                    .addLast(new Common.TunnelMsgEncoder())
-                                    .addLast(new Common.TunnelMsgDecoder())
+                                    .addLast(new Common.TunnelMsgCodec())
                                     .addLast(new RemoteTunnelHandler());
                         }
                     });
