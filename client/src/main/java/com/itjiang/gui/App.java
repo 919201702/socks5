@@ -205,12 +205,15 @@ public class App extends JFrame {
     }
 
     private synchronized void bootClient(boolean start) {
-        Thread.ofVirtual().name("AWT-Virtual").start(() -> {
-            if (start) {
-                ClientBoot.boot(null);
-            } else {
-                ClientBoot.close();
+        new Thread("AWT-Thread") {
+            @Override
+            public void run() {
+                if (start) {
+                    ClientBoot.boot(null);
+                } else {
+                    ClientBoot.close();
+                }
             }
-        });
+        }.start();
     }
 }

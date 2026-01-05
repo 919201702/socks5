@@ -6,6 +6,8 @@ APP_VERSION="1.0.1"
 MAIN_JAR="client-${APP_VERSION}-jar-with-dependencies.jar"
 MAIN_CLASS="com.itjiang.Socks5ProxyClient"
 
+mvn clean package
+
 # 1. 准备构建目录 (为了防止把 target 下的其他垃圾文件打进去)
 echo "正在准备构建目录..."
 rm -rf client/target/staging
