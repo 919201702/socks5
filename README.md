@@ -1,6 +1,6 @@
-# Socks5 代理服务
+# 高性能网络传输/安全通道
 
-基于 Netty 和 OpenSSL 实现的高性能、加密的 SOCKS5 代理服务，支持远程隧道转发和 GraalVM 原生镜像编译。
+基于 Netty 和 OpenSSL 实现的高性能、加密的 **SOCKS5** 代理服务，支持远程隧道转发和 GraalVM 原生镜像编译。
 
 ## 功能特性
 
