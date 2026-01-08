@@ -53,6 +53,7 @@ public class Common {
             int dataLen = msg.getData().readableBytes();
             out.writeInt(1 + dataLen);
             out.writeByte(msg.getType());
+            // 创建一个新的视图，重置读写指针位置
             out.writeBytes(msg.getData().duplicate());
         }
         @Override
