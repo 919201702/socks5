@@ -6,7 +6,7 @@
 
 *   **高性能:** 基于 Netty 的异步事件驱动架构，实现**零拷贝**，提供高并发、低延迟的网络代理服务。
 *   **加密通信:** 使用 OpenSSL 对通信进行**加密**，保障数据传输的安全性。
-*   **SOCKS5 协议:** 完整实现 SOCKS5 协议（TCP/IPv4）。
+*   **SOCKS5 协议:** 完整实现 SOCKS5 协议（TCP/IP）。
 *   **远程隧道转发:** 支持将本地端口的流量转发到远程服务器。
 *   **认证机制:** 支持基于 Token 的认证，确保只有授权的客户端才能连接。
 *   **跨平台:** 支持在 Windows、Linux、macOS 等主流操作系统上运行。
@@ -24,7 +24,7 @@
 
 ## 环境要求
 
-*   Java 21 或更高版本
+*   **Java 21 或更高版本**
 *   Maven 3.9 或更高版本
 *   OpenSSL（用于生成证书）
 *   GraalVM（可选，用于构建原生镜像）
@@ -40,25 +40,42 @@ cd socks5
 
 ### 2. 配置
 
-将 `template-proxy.properties` 文件复制为 `proxy.properties`，并根据您的需求修改其中的配置项。
+将 `template-proxy.properties` 文件复制为 `proxy.properties`，并根据自己的需求修改其中的配置项。
 
 ```bash
 cp template-proxy.properties proxy.properties
 ```
 
-### 3. 构建项目
+### 3. 配置证书（证书颁发机构申请 或 自签名证书）
+
+可以使用 OpenSSL 生成自签名的证书和私钥，用于测试和开发。
+
+3.1.  **生成私钥:**
+
+    ```shell
+    openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048
+    ```
+
+3.2.  **生成证书:**
+
+    ```shell
+    openssl req -new -x509 -key server.key -out server.crt -days 3650 -subj "/CN=MyTunnelServer"
+    ```
+
+
+### 4. 构建项目
 
 ```bash
 mvn clean package
 ```
 
-### 4. 启动服务端
+### 5. 启动服务端
 
 ```bash
 java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 ```
 
-### 5. 启动客户端
+### 6. 启动客户端
 
 ```bash
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar
@@ -69,23 +86,22 @@ java -jar client/target/client-1.0.1-jar-with-dependencies.jar
 配置文件为 `proxy.properties`，主要配置项如下：
 
 ```properties
-# 服务端地址
+# ---------------------------------
+# Socks5-Over-AES Proxy Configuration
+# ---------------------------------
+
+# client:
+client.local.port=8080
 server.host=127.0.0.1
+client.auth.token=jt-token-01
 
-# 服务端端口
-server.port=1080
+# server:
+server.auth.token.list=jt-token-01,jt-token-02
+server.key.path=server.key
 
-# 本地监听端口（客户端使用）
-local.port=1081
-
-# 认证 Token
-auth.token=your-secret-token
-
-# 服务端证书路径
-server.cert.path=./server.crt
-
-# 服务端私钥路径
-server.key.path=./server.key
+# common:
+server.port=8001
+server.cert.path=server.crt
 ```
 
 ## GraalVM 原生镜像
@@ -120,22 +136,6 @@ cd client/target/
 
 ## 开发指南
 
-### 生成自签名证书
-
-您可以使用 OpenSSL 生成自签名的证书和私钥，用于测试和开发。
-
-1.  **生成私钥:**
-
-    ```shell
-    openssl genpkey -algorithm RSA -out server.key -pkeyopt rsa_keygen_bits:2048
-    ```
-
-2.  **生成证书:**
-
-    ```shell
-    openssl req -new -x509 -key server.key -out server.crt -days 3650 -subj "/CN=MyTunnelServer"
-    ```
-
 ### 内存泄漏检测
 
 Netty 提供了强大的内存泄漏检测工具。在开发和测试阶段，建议开启此功能，以确保代码的健壮性。
@@ -146,7 +146,7 @@ Netty 提供了强大的内存泄漏检测工具。在开发和测试阶段，�
 -Dio.netty.leakDetection.level=PARANOID
 ```
 
-如果程序运行一段时间后，日志中没有出现 `LEAK: ByteBuf.release() was not called` 的信息，那么说明您的代码很可能没有内存泄漏问题。在生产环境中，可以移除此参数以提升性能。
+如果程序运行一段时间后，日志中没有出现 `LEAK: ByteBuf.release() was not called` 之类的信息，那么说明大概率是没有内存泄漏的问题了。生产环境中，移除此参数以提升性能。
 
 ## 许可协议
 
