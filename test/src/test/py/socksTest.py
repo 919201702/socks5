@@ -81,6 +81,7 @@ def start_flood():
         time.sleep(1)
 
 if __name__ == "__main__":
+    print(f"安装socks模块：pip install PySocks")
     # 增加系统打开文件数限制
     try:
         import resource

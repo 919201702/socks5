@@ -148,6 +148,30 @@ Netty 提供了强大的内存泄漏检测工具。在开发和测试阶段，�
 
 如果程序运行一段时间后，日志中没有出现 `LEAK: ByteBuf.release() was not called` 之类的信息，那么说明大概率是没有内存泄漏的问题了。生产环境中，移除此参数以提升性能。
 
+## 性能测试
+脚本简单测试
+```bash
+python3 test/src/test/py/socksTest.py
+```
+测试结果：
+![img.png](assets/img.png)
+
+正常保持2w连接的同时，依然正常进行新的连接访问并获取数据
+```bash
+[root@lavm-yfp76l31xu ~]time curl -x socks5://127.0.0.1:58080 www.baidu.com -I
+HTTP/1.1 200 OK
+Cache-Control: private, no-cache, no-store, proxy-revalidate, no-transform
+Content-Length: 0
+Content-Type: text/html
+Pragma: no-cache
+Server: bfe
+Date: Mon, 12 Jan 2026 08:25:51 GMT
+
+real	0m0.429s
+user	0m0.001s
+sys	0m0.006s
+[root@lavm-yfp76l31xu ~]#
+```
 ## 许可协议
 
 本项目遵循 [Apache-2.0](LICENSE) 许可协议。
