@@ -37,6 +37,15 @@ public class RemoteDataRelayHandler extends SimpleChannelInboundHandler<Common.T
             browserChannel.close();
         }
     }
+    // 预防ctx数据积压，browserChannel端暂停写入
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+        boolean canWrite = ctx.channel().isWritable();
+        if (browserChannel != null) {
+            browserChannel.config().setAutoRead(canWrite);
+        }
+        super.channelWritabilityChanged(ctx);
+    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {

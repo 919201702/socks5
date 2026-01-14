@@ -45,6 +45,15 @@ public class BrowserDataRelayHandler extends ChannelInboundHandlerAdapter {
                     .addListener(ChannelFutureListener.CLOSE);
         }
     }
+    // 预防browserCtx数据积压，remote端暂停写入
+    @Override
+    public void channelWritabilityChanged(ChannelHandlerContext browserCtx) throws Exception {
+        boolean canWrite = browserCtx.channel().isWritable();
+        if (remoteChannel != null) {
+            remoteChannel.config().setAutoRead(canWrite);
+        }
+        super.channelWritabilityChanged(browserCtx);
+    }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext browserCtx, Throwable cause) {
