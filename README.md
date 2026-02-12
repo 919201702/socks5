@@ -102,7 +102,14 @@ server.key.path=server.key
 # common:
 server.port=8001
 server.cert.path=server.crt
+
+# monitor:
+server.monitor.host=127.0.0.1
+server.monitor.port=18080
 ```
+
+
+监控接口默认仅绑定到 `server.monitor.host`（建议保持 `127.0.0.1`），并且服务端会对来源地址做内网校验。
 
 ## GraalVM 原生镜像
 
