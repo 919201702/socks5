@@ -33,7 +33,11 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     public void channelActive(ChannelHandlerContext remoteCtx) {
         remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.CLIENT_AUTH_TOKEN));
 
-        String targetAddr = String.format("%s:%d", socksRequest.dstAddr(), socksRequest.dstPort());
+        String targetHost = socksRequest.dstAddr();
+        if (targetHost != null && targetHost.contains(":") && !targetHost.startsWith("[") && !targetHost.endsWith("]")) {
+            targetHost = "[" + targetHost + "]";
+        }
+        String targetAddr = String.format("%s:%d", targetHost, socksRequest.dstPort());
         logger.info("浏览器请求连接: {}", targetAddr);
         remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr));
     }

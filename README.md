@@ -77,9 +77,20 @@ java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 
 ### 6. 启动客户端
 
+统一入口为 `com.itjiang.Client`，支持三种模式：
+
 ```bash
-java -jar client/target/client-1.0.1-jar-with-dependencies.jar
+# socks5（默认）
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar socks5
+
+# http 代理
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar http
+
+# https 代理（CONNECT 隧道）
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar https
 ```
+
+> `https` 模式走 HTTP CONNECT 隧道，不对目标站点做中间人解密，因此不需要向机构申请证书。
 
 ## 配置说明
 
@@ -102,7 +113,14 @@ server.key.path=server.key
 # common:
 server.port=8001
 server.cert.path=server.crt
+
+# monitor:
+server.monitor.host=127.0.0.1
+server.monitor.port=18080
 ```
+
+
+监控接口默认仅绑定到 `server.monitor.host`（建议保持 `127.0.0.1`），并且服务端会对来源地址做内网校验。
 
 ## GraalVM 原生镜像
 
