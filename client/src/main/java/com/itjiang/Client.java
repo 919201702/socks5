@@ -23,6 +23,11 @@ public class Client {
             case "socks5" -> Socks5ProxyClient.start(Config.CLIENT_LOCAL_PORT);
             case "http" -> HttpProxyClient.start(false, Config.CLIENT_HTTP_PORT);
             case "https" -> HttpProxyClient.start(true, Config.CLIENT_HTTPS_PORT);
+        String mode = args.length > 0 ? args[0] : System.getProperty("client.mode", "socks5");
+        switch (mode.toLowerCase()) {
+            case "socks5" -> Socks5ProxyClient.main(args);
+            case "http" -> HttpProxyClient.main(args);
+            case "https" -> HttpsProxyClient.main(args);
             default -> {
                 logger.error("未知 client 模式: {}，支持模式: socks5/http/https", mode);
                 System.exit(1);

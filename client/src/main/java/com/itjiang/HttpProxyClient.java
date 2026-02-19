@@ -19,6 +19,10 @@ public class HttpProxyClient {
     }
 
     public static void start(boolean connectOnly, int localPort) throws InterruptedException {
+        start(false);
+    }
+
+    public static void start(boolean connectOnly) throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -40,6 +44,10 @@ public class HttpProxyClient {
                     , Config.SERVER_HOST
                     , Config.SERVER_PORT);
             b.bind(localPort).sync().channel().closeFuture().sync();
+                    , Config.CLIENT_LOCAL_PORT
+                    , Config.SERVER_HOST
+                    , Config.SERVER_PORT);
+            b.bind(Config.CLIENT_LOCAL_PORT).sync().channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
             workerGroup.shutdownGracefully();

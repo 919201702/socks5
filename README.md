@@ -86,6 +86,16 @@ java -jar client/target/client-1.0.1-jar-with-dependencies.jar
 # 方式2: 通过参数仅启动单个模式
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar socks5
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar http
+统一入口为 `com.itjiang.Client`，支持三种模式：
+
+```bash
+# socks5（默认）
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar socks5
+
+# http 代理
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar http
+
+# https 代理（CONNECT 隧道）
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar https
 ```
 

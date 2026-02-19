@@ -83,6 +83,9 @@ public final class Config {
         }
     }
 
+        SERVER_PORT = parsePort(props, "server.port", DEFAULT_SERVER_PORT);
+        SERVER_HOST = props.getProperty("server.host", DEFAULT_SERVER_HOST);
+
     private static String getString(Properties props, String key, String defaultValue) {
         return props.getProperty(key, defaultValue).trim();
     }
@@ -116,6 +119,7 @@ public final class Config {
         String value = props.getProperty(key, String.valueOf(defaultValue)).trim();
         return Boolean.parseBoolean(value);
     }
+        CLIENT_LOCAL_PORT = parsePort(props, "client.local.port", DEFAULT_LOCAL_PORT);
 
     private static File parseFile(Properties props, String key, String defaultPath) {
         String path = props.getProperty(key, defaultPath);
@@ -135,6 +139,39 @@ public final class Config {
 
     private static void validateFileExists(File file, String keyName) {
         Objects.requireNonNull(file);
+        String serverAuthTokenListStr = props.getProperty("server.auth.token.list", "");
+        SERVER_AUTH_TOKEN_LIST = Arrays.stream(serverAuthTokenListStr.split(","))
+                .map(String::trim)
+                .filter(token -> !token.isEmpty())
+                .collect(Collectors.toUnmodifiableList());
+        if (SERVER_AUTH_TOKEN_LIST.isEmpty()) {
+            throw new RuntimeException("配置错误: server.auth.token.list 不能为空");
+        }
+
+        SERVER_STATS_PATH = props.getProperty("server.stats.path", DEFAULT_SERVER_STATS_PATH);
+        SERVER_MONITOR_PORT = parsePort(props, "server.monitor.port", DEFAULT_MONITOR_PORT);
+        SERVER_MONITOR_HOST = props.getProperty("server.monitor.host", DEFAULT_MONITOR_HOST).trim();
+        if (SERVER_MONITOR_HOST.isEmpty()) {
+            throw new RuntimeException("配置错误: server.monitor.host 不能为空");
+        }
+
+        validateFileExists(SERVER_CERT, "server.cert.path");
+    }
+
+    private static int parsePort(Properties props, String key, int defaultValue) {
+        String value = props.getProperty(key, String.valueOf(defaultValue));
+        try {
+            int port = Integer.parseInt(value);
+            if (port < 1 || port > 65535) {
+                throw new RuntimeException("配置错误: " + key + " 端口范围必须在 1-65535, 当前值: " + value);
+            }
+            return port;
+        } catch (NumberFormatException ex) {
+            throw new RuntimeException("配置错误: " + key + " 必须为数字端口, 当前值: " + value, ex);
+        }
+    }
+
+    private static void validateFileExists(File file, String keyName) {
         if (!file.exists()) {
             throw new RuntimeException("配置错误: " + keyName + " 对应文件不存在: " + file.getAbsolutePath());
         }
