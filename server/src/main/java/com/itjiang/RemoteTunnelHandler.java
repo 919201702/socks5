@@ -49,16 +49,18 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
             return;
         }
         String hostPort =  msg.getDataAsString();
-        String[] split = hostPort.split(":");
-        if (split.length != 2) {
-            logger.warn("无效的目标地址格式: {}", hostPort);
+        HostPort parsed;
+        try {
+            parsed = parseHostPort(hostPort);
+        } catch (IllegalArgumentException ex) {
+            logger.warn("无效的目标地址格式: {}, cause: {}", hostPort, ex.getMessage());
             Common.TunnelMsg toMsg = new Common.TunnelMsg(Common.TYPE_CONNECT_FAIL, String.format("无效的目标地址格式: %s", hostPort));
             clientCtx.writeAndFlush(toMsg)
                     .addListener(ChannelFutureListener.CLOSE);
             return;
         }
-        String host = split[0];
-        int port = Integer.parseInt(split[1]);
+        String host = parsed.host();
+        int port = parsed.port();
 
         logger.info("连接到: {}:{} 来自客户端: {}", host, port, clientCtx.channel().remoteAddress());
 
@@ -115,6 +117,49 @@ public class RemoteTunnelHandler extends SimpleChannelInboundHandler<Common.Tunn
         logger.error("Exception in RemoteTunnelHandler", cause);
         closeChannels();
     }
+
+
+
+    private HostPort parseHostPort(String hostPort) {
+        if (hostPort == null || hostPort.isBlank()) {
+            throw new IllegalArgumentException("hostPort 为空");
+        }
+        String value = hostPort.trim();
+        String host;
+        String portText;
+
+        if (value.startsWith("[")) {
+            int bracketCloseIdx = value.indexOf(']');
+            if (bracketCloseIdx < 0 || bracketCloseIdx + 2 > value.length() || value.charAt(bracketCloseIdx + 1) != ':') {
+                throw new IllegalArgumentException("不支持的 IPv6 格式");
+            }
+            host = value.substring(1, bracketCloseIdx);
+            portText = value.substring(bracketCloseIdx + 2);
+        } else {
+            int lastColon = value.lastIndexOf(':');
+            if (lastColon <= 0 || lastColon == value.length() - 1) {
+                throw new IllegalArgumentException("缺少端口");
+            }
+            host = value.substring(0, lastColon);
+            portText = value.substring(lastColon + 1);
+        }
+
+        int parsedPort;
+        try {
+            parsedPort = Integer.parseInt(portText);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("端口不是数字", ex);
+        }
+        if (parsedPort < 1 || parsedPort > 65535) {
+            throw new IllegalArgumentException("端口范围非法");
+        }
+        if (host.isBlank()) {
+            throw new IllegalArgumentException("目标地址为空");
+        }
+        return new HostPort(host, parsedPort);
+    }
+
+    private record HostPort(String host, int port) { }
 
     private void closeChannels() {
         if (targetChannel != null && targetChannel.isActive()) {

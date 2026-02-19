@@ -91,7 +91,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.itjiang.Socks5ProxyClient</mainClass>
+                            <mainClass>com.itjiang.Client</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -164,7 +164,7 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <mainClass>com.itjiang.Socks5ProxyClient</mainClass>
+                            <mainClass>com.itjiang.Client</mainClass>
                             <buildArgs>
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>

@@ -26,6 +26,9 @@ public class Socks5ProxyServer {
         MonitorDashboard.start();
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
+        if (!Config.SERVER_KEY.exists()) {
+            throw new RuntimeException("配置错误: server.key.path 对应文件不存在: " + Config.SERVER_KEY.getAbsolutePath());
+        }
         final SslContext sslCtx;
         try {
             sslCtx = SslContextBuilder.forServer(Config.SERVER_CERT, Config.SERVER_KEY)
