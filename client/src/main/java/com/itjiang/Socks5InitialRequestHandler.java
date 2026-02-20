@@ -8,6 +8,7 @@ import io.netty.handler.codec.socksx.v5.Socks5AuthMethod;
 import io.netty.handler.codec.socksx.v5.Socks5CommandRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5InitialRequest;
 import io.netty.handler.codec.socksx.v5.Socks5InitialRequestDecoder;
+import io.netty.handler.codec.socksx.v5.Socks5PasswordAuthRequestDecoder;
 
 import java.io.IOException;
 
@@ -21,13 +22,30 @@ public class Socks5InitialRequestHandler extends SimpleChannelInboundHandler<Soc
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, Socks5InitialRequest msg) {
-        // 无需认证
-        ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
         // 握手完成，替换 pipeline
         ctx.pipeline().remove(this);
         ctx.pipeline().remove(Socks5InitialRequestDecoder.class);
-        ctx.pipeline().addLast(new Socks5CommandRequestDecoder());
-        ctx.pipeline().addLast(Socks5CommandRequestHandler.INSTANCE);
+
+        if (Config.CLIENT_SOCKS5_PASSWORD_AUTH_ENABLED) {
+            if (msg.authMethods().contains(Socks5AuthMethod.PASSWORD)) {
+                ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.PASSWORD));
+                ctx.pipeline().addLast(new Socks5PasswordAuthRequestDecoder());
+                ctx.pipeline().addLast(Socks5PasswordAuthRequestHandler.INSTANCE);
+            } else {
+                ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.UNACCEPTED));
+                ctx.close();
+            }
+            return;
+        }
+
+        if (msg.authMethods().contains(Socks5AuthMethod.NO_AUTH)) {
+            ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.NO_AUTH));
+            ctx.pipeline().addLast(new Socks5CommandRequestDecoder());
+            ctx.pipeline().addLast(Socks5CommandRequestHandler.INSTANCE);
+        } else {
+            ctx.writeAndFlush(new DefaultSocks5InitialResponse(Socks5AuthMethod.UNACCEPTED));
+            ctx.close();
+        }
     }
 
     @Override

@@ -37,6 +37,9 @@ public final class Config {
     public static final boolean CLIENT_SOCKS5_ENABLED;
     public static final boolean CLIENT_HTTP_ENABLED;
     public static final boolean CLIENT_HTTPS_ENABLED;
+    public static final boolean CLIENT_SOCKS5_PASSWORD_AUTH_ENABLED;
+    public static final String CLIENT_SOCKS5_USERNAME;
+    public static final String CLIENT_SOCKS5_PASSWORD;
 
     public static final File SERVER_CERT;
     public static final File SERVER_KEY;
@@ -61,6 +64,18 @@ public final class Config {
         CLIENT_SOCKS5_ENABLED = parseBoolean(props, "client.socks5.enabled", true);
         CLIENT_HTTP_ENABLED = parseBoolean(props, "client.http.enabled", false);
         CLIENT_HTTPS_ENABLED = parseBoolean(props, "client.https.enabled", false);
+
+        CLIENT_SOCKS5_PASSWORD_AUTH_ENABLED = parseBoolean(props, "client.socks5.password.auth.enabled", false);
+        CLIENT_SOCKS5_USERNAME = getString(props, "client.socks5.username", "");
+        CLIENT_SOCKS5_PASSWORD = getString(props, "client.socks5.password", "");
+        if (CLIENT_SOCKS5_PASSWORD_AUTH_ENABLED) {
+            if (CLIENT_SOCKS5_USERNAME.isBlank()) {
+                throw new RuntimeException("配置错误: client.socks5.username 不能为空");
+            }
+            if (CLIENT_SOCKS5_PASSWORD.isBlank()) {
+                throw new RuntimeException("配置错误: client.socks5.password 不能为空");
+            }
+        }
 
         CLIENT_AUTH_TOKEN = getRequiredString(props, "client.auth.token");
         SERVER_AUTH_TOKEN_LIST = parseTokenList(props.getProperty("server.auth.token.list", ""));

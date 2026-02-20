@@ -109,7 +109,10 @@ client.http.enabled=false
 client.https.enabled=false
 
 # client listen ports
-client.local.port=8080
+client.socks5.port=8080
+client.socks5.password.auth.enabled=false
+client.socks5.username=admin
+client.socks5.password=123456
 client.http.port=8081
 client.https.port=8082
 

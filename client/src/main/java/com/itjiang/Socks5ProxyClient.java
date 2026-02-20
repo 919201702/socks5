@@ -32,10 +32,11 @@ public class Socks5ProxyClient {
                         }
                     });
 
-            logger.info("Socks5 代理启动成功，本地监听端口: {}, 远程服务器地址: {}:{}"
+            logger.info("Socks5 代理启动成功，本地监听端口: {}, 远程服务器地址: {}:{}, 密码认证启用: {}"
                     , localPort
                     , Config.SERVER_HOST
-                    , Config.SERVER_PORT);
+                    , Config.SERVER_PORT
+                    , Config.CLIENT_SOCKS5_PASSWORD_AUTH_ENABLED);
             b.bind(localPort).sync().channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
