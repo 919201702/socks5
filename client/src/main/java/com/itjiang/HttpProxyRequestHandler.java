@@ -25,16 +25,16 @@ import static com.itjiang.Config.SERVER_PORT;
 @ChannelHandler.Sharable
 public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHttpRequest> {
     private static final Logger logger = LoggerFactory.getLogger(HttpProxyRequestHandler.class);
-    private final boolean connectOnly;
+    private final boolean isHttps;
 
-    public HttpProxyRequestHandler(boolean connectOnly) {
-        this.connectOnly = connectOnly;
+    public HttpProxyRequestHandler(boolean isHttps) {
+        this.isHttps = isHttps;
     }
 
     @Override
     protected void channelRead0(ChannelHandlerContext localCtx, FullHttpRequest request) {
         boolean isConnect = request.method().equals(HttpMethod.CONNECT);
-        if (connectOnly && !isConnect) {
+        if (isHttps && !isConnect) {
             sendError(localCtx, HttpResponseStatus.METHOD_NOT_ALLOWED, "HTTPS 代理仅支持 CONNECT 方法");
             return;
         }
@@ -78,7 +78,7 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
                         ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), SERVER_HOST, SERVER_PORT));
                         ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
                         ch.pipeline().addLast(new Common.TunnelMsgCodec());
-                        ch.pipeline().addLast(new TunnelConnectHandler(localCtx, target.hostPort(), isConnect, initialPayload));
+                        ch.pipeline().addLast(new TunnelConnectHandler(localCtx, target.hostPort(), isConnect, initialPayload, isHttps));
                     }
                 });
 

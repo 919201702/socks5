@@ -16,10 +16,6 @@ import io.netty.handler.codec.socksx.v5.Socks5ServerEncoder;
 public class Socks5ProxyClient {
     private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyClient.class);
 
-    public static void main(String[] args) throws InterruptedException {
-        start(Config.CLIENT_LOCAL_PORT);
-    }
-
     public static void start(int localPort) throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();

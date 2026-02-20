@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public final class Config {
 
     private static final int DEFAULT_SERVER_PORT = 58001;
-    private static final int DEFAULT_CLIENT_LOCAL_PORT = 58080;
+    private static final int DEFAULT_CLIENT_SOCKS5_PORT = 58080;
     private static final int DEFAULT_CLIENT_HTTP_PORT = 58081;
     private static final int DEFAULT_CLIENT_HTTPS_PORT = 58082;
     private static final String DEFAULT_SERVER_HOST = "127.0.0.1";
@@ -31,7 +31,7 @@ public final class Config {
     public static final String CLIENT_AUTH_TOKEN;
     public static final List<String> SERVER_AUTH_TOKEN_LIST;
 
-    public static final int CLIENT_LOCAL_PORT;
+    public static final int CLIENT_SOCKS5_PORT;
     public static final int CLIENT_HTTP_PORT;
     public static final int CLIENT_HTTPS_PORT;
     public static final boolean CLIENT_SOCKS5_ENABLED;
@@ -54,7 +54,7 @@ public final class Config {
         SERVER_KEY = parseFile(props, "server.key.path", DEFAULT_SERVER_KEY_PATH);
         validateFileExists(SERVER_CERT, "server.cert.path");
 
-        CLIENT_LOCAL_PORT = parsePort(props, "client.local.port", DEFAULT_CLIENT_LOCAL_PORT);
+        CLIENT_SOCKS5_PORT = parsePort(props, "client.socks5.port", DEFAULT_CLIENT_SOCKS5_PORT);
         CLIENT_HTTP_PORT = parsePort(props, "client.http.port", DEFAULT_CLIENT_HTTP_PORT);
         CLIENT_HTTPS_PORT = parsePort(props, "client.https.port", DEFAULT_CLIENT_HTTPS_PORT);
 
@@ -126,7 +126,7 @@ public final class Config {
         List<String> tokens = Arrays.stream(rawTokens.split(","))
                 .map(String::trim)
                 .filter(token -> !token.isEmpty())
-                .collect(Collectors.toUnmodifiableList());
+                .toList();
         if (tokens.isEmpty()) {
             throw new RuntimeException("配置错误: server.auth.token.list 不能为空");
         }

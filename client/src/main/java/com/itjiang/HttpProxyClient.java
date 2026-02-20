@@ -14,11 +14,7 @@ import org.slf4j.LoggerFactory;
 public class HttpProxyClient {
     private static final Logger logger = LoggerFactory.getLogger(HttpProxyClient.class);
 
-    public static void main(String[] args) throws InterruptedException {
-        start(false, Config.CLIENT_HTTP_PORT);
-    }
-
-    public static void start(boolean connectOnly, int localPort) throws InterruptedException {
+    public static void start(boolean isHttps, int localPort) throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -30,12 +26,12 @@ public class HttpProxyClient {
                         protected void initChannel(SocketChannel ch) {
                             ch.pipeline().addLast(new HttpServerCodec())
                                     .addLast(new HttpObjectAggregator(16 * 1024 * 1024))
-                                    .addLast(new HttpProxyRequestHandler(connectOnly));
+                                    .addLast(new HttpProxyRequestHandler(isHttps));
                         }
                     });
 
             logger.info("{}代理客户端启动成功，本地监听端口: {}, 远程服务器地址: {}:{}",
-                    connectOnly ? "HTTPS " : "HTTP "
+                    isHttps ? "HTTPS " : "HTTP "
                     , localPort
                     , Config.SERVER_HOST
                     , Config.SERVER_PORT);

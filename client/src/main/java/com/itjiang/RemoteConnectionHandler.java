@@ -38,7 +38,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
             targetHost = "[" + targetHost + "]";
         }
         String targetAddr = String.format("%s:%d", targetHost, socksRequest.dstPort());
-        logger.info("浏览器请求连接: {}", targetAddr);
+        logger.info("socks5请求连接: {}", targetAddr);
         remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr));
     }
 

@@ -11,30 +11,15 @@ public class Client {
     private static final Logger logger = LoggerFactory.getLogger(Client.class);
 
     public static void main(String[] args) throws Exception {
-        if (args.length > 0) {
-            runSingleMode(args[0]);
-            return;
-        }
         runByConfig();
     }
 
-    private static void runSingleMode(String mode) throws Exception {
-        switch (mode.toLowerCase()) {
-            case "socks5" -> Socks5ProxyClient.start(Config.CLIENT_LOCAL_PORT);
-            case "http" -> HttpProxyClient.start(false, Config.CLIENT_HTTP_PORT);
-            case "https" -> HttpProxyClient.start(true, Config.CLIENT_HTTPS_PORT);
-            default -> {
-                logger.error("未知 client 模式: {}，支持模式: socks5/http/https", mode);
-                System.exit(1);
-            }
-        }
-    }
 
     private static void runByConfig() throws InterruptedException {
         List<Thread> threads = new ArrayList<>();
 
         if (Config.CLIENT_SOCKS5_ENABLED) {
-            threads.add(startServiceThread("socks5", () -> Socks5ProxyClient.start(Config.CLIENT_LOCAL_PORT)));
+            threads.add(startServiceThread("socks5", () -> Socks5ProxyClient.start(Config.CLIENT_SOCKS5_PORT)));
         }
         if (Config.CLIENT_HTTP_ENABLED) {
             threads.add(startServiceThread("http", () -> HttpProxyClient.start(false, Config.CLIENT_HTTP_PORT)));

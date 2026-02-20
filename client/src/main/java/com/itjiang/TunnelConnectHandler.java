@@ -18,17 +18,20 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
     private final String target;
     private final boolean connectMethod;
     private final ByteBuf initialPayload;
+    private final boolean isHttps;
 
-    public TunnelConnectHandler(ChannelHandlerContext localCtx, String target, boolean connectMethod, ByteBuf initialPayload) {
+    public TunnelConnectHandler(ChannelHandlerContext localCtx, String target, boolean connectMethod, ByteBuf initialPayload, boolean isHttps) {
         this.localCtx = localCtx;
         this.target = target;
         this.connectMethod = connectMethod;
         this.initialPayload = initialPayload;
+        this.isHttps = isHttps;
     }
 
     @Override
     public void channelActive(ChannelHandlerContext remoteCtx) {
         remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.CLIENT_AUTH_TOKEN));
+        logger.info("{}请求连接: {}", isHttps ? "HTTPS" : "HTTP", target);
         remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, target));
     }
 
