@@ -77,9 +77,19 @@ java -jar server/target/server-1.0.1-jar-with-dependencies.jar
 
 ### 6. 启动客户端
 
+统一入口为 `com.itjiang.Client`，支持两种运行方式：
+
 ```bash
+# 方式1: 按配置文件同时启动多个代理服务（推荐）
 java -jar client/target/client-1.0.1-jar-with-dependencies.jar
+
+# 方式2: 通过参数仅启动单个模式
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar socks5
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar http
+java -jar client/target/client-1.0.1-jar-with-dependencies.jar https
 ```
+
+> `https` 模式走 HTTP CONNECT 隧道，不对目标站点做中间人解密，因此不需要向机构申请证书。
 
 ## 配置说明
 
@@ -91,9 +101,25 @@ java -jar client/target/client-1.0.1-jar-with-dependencies.jar
 # ---------------------------------
 
 # client:
-client.local.port=8080
-server.host=127.0.0.1
 client.auth.token=jt-token-01
+
+# client services switch
+client.socks5.enabled=true
+client.http.enabled=false
+client.https.enabled=false
+
+# socks5 local auth (for apps connecting to local socks5 proxy)
+client.socks5.auth.enabled=false
+client.socks5.username=proxy-user
+client.socks5.password=proxy-pass
+
+# client listen ports
+client.local.port=8080
+client.http.port=8081
+client.https.port=8082
+
+# remote server target
+server.host=127.0.0.1
 
 # server:
 server.auth.token.list=jt-token-01,jt-token-02
@@ -102,7 +128,16 @@ server.key.path=server.key
 # common:
 server.port=8001
 server.cert.path=server.crt
+
+# monitor:
+server.monitor.host=127.0.0.1
+server.monitor.port=18080
 ```
+
+
+监控接口默认仅绑定到 `server.monitor.host`（建议保持 `127.0.0.1`），并且服务端会对来源地址做内网校验。
+
+当 `client.socks5.auth.enabled=true` 时，本地 SOCKS5 代理会要求用户名/密码认证（RFC1929）。
 
 ## GraalVM 原生镜像
 
@@ -153,6 +188,15 @@ Netty 提供了强大的内存泄漏检测工具。在开发和测试阶段，�
 ```bash
 python3 test/src/test/py/socksTest.py
 ```
+
+### Win11 PowerShell 一键测试 HTTPS 代理
+
+> 该脚本包含通过/失败断言，适用于验证 `https` 代理端口（CONNECT 隧道）是否工作正常。执行前请先启动 server 与 client，并确保 `client.https.enabled=true`。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\test\src\test\ps\https_proxy_smoke_test.ps1 -ProxyHost 127.0.0.1 -ProxyPort 8082
+```
+
 测试结果：
 ![img.png](assets/img.png)
 

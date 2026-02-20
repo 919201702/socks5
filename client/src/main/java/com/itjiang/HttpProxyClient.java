@@ -1,26 +1,24 @@
 package com.itjiang;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.socksx.v5.Socks5AddressEncoder;
-import io.netty.handler.codec.socksx.v5.Socks5InitialRequestDecoder;
-import io.netty.handler.codec.socksx.v5.Socks5ServerEncoder;
+import io.netty.handler.codec.http.HttpObjectAggregator;
+import io.netty.handler.codec.http.HttpServerCodec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class Socks5ProxyClient {
-    private static final Logger logger = LoggerFactory.getLogger(Socks5ProxyClient.class);
+public class HttpProxyClient {
+    private static final Logger logger = LoggerFactory.getLogger(HttpProxyClient.class);
 
     public static void main(String[] args) throws InterruptedException {
-        start(Config.CLIENT_LOCAL_PORT);
+        start(false, Config.CLIENT_HTTP_PORT);
     }
 
-    public static void start(int localPort) throws InterruptedException {
+    public static void start(boolean connectOnly, int localPort) throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -30,17 +28,17 @@ public class Socks5ProxyClient {
                     .childHandler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel ch) {
-                            ch.pipeline().addLast(new Socks5ServerEncoder(Socks5AddressEncoder.DEFAULT))
-                                    .addLast(new Socks5InitialRequestDecoder())
-                                    .addLast(Socks5InitialRequestHandler.INSTANCE);
+                            ch.pipeline().addLast(new HttpServerCodec())
+                                    .addLast(new HttpObjectAggregator(16 * 1024 * 1024))
+                                    .addLast(new HttpProxyRequestHandler(connectOnly));
                         }
                     });
 
-            logger.info("Socks5 代理启动成功，本地监听端口: {}, 远程服务器地址: {}:{}, 账号密码认证: {}"
+            logger.info("{}代理客户端启动成功，本地监听端口: {}, 远程服务器地址: {}:{}",
+                    connectOnly ? "HTTPS " : "HTTP "
                     , localPort
                     , Config.SERVER_HOST
-                    , Config.SERVER_PORT
-                    , Config.CLIENT_SOCKS5_AUTH_ENABLED ? "已开启" : "未开启");
+                    , Config.SERVER_PORT);
             b.bind(localPort).sync().channel().closeFuture().sync();
         } finally {
             bossGroup.shutdownGracefully();
