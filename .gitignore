@@ -34,6 +34,11 @@ build/
 
 ### Mac OS ###
 .DS_Store
-/logs/
 
+/logs/
 /stats.json
+/block.conf
+/server.key
+/server-jp.crt
+/server.crt
+/proxy.properties
