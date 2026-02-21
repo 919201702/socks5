@@ -29,6 +29,14 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
             return;
         }
 
+        if (BlockHostFilter.getInstance().shouldBlock(request.dstAddr())) {
+            logger.info("命中拦截规则，拒绝访问: {}", NetAddressFormatter.hostPort(request.dstAddr(), request.dstPort()));
+            browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
+                    Socks5CommandStatus.CONNECTION_NOT_ALLOWED, request.dstAddrType()));
+            browserCtx.close();
+            return;
+        }
+
         if (DirectAllowFilter.getInstance().shouldDirect(request.dstAddr())) {
             connectDirect(browserCtx, request);
             return;

@@ -59,6 +59,13 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
             return;
         }
 
+        if (BlockHostFilter.getInstance().shouldBlock(target.host())) {
+            logger.info("命中拦截规则，拒绝访问: {}", target.hostPort());
+            ReferenceCountUtil.safeRelease(initialPayload);
+            sendError(localCtx, HttpResponseStatus.FORBIDDEN, "目标地址被拦截");
+            return;
+        }
+
         if (DirectAllowFilter.getInstance().shouldDirect(target.host())) {
             connectDirect(localCtx, target, connectMethod, initialPayload);
             return;
