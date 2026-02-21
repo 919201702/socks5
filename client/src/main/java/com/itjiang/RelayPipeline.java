@@ -1,6 +1,7 @@
 package com.itjiang;
 
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
@@ -48,7 +49,7 @@ public final class RelayPipeline {
         });
     }
 
-    private static void removeIfPresent(ChannelHandlerContext ctx, Class<?> handlerClass) {
+    private static void removeIfPresent(ChannelHandlerContext ctx, Class<? extends ChannelHandler> handlerClass) {
         if (ctx.pipeline().get(handlerClass) != null) {
             ctx.pipeline().remove(handlerClass);
         }
