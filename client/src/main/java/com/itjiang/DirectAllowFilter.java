@@ -42,8 +42,10 @@ public final class DirectAllowFilter {
 
     private void reloadRules() {
         if (!Files.exists(configPath)) {
-            rulesRef.set(List.of());
-            logger.info("直连配置文件不存在，已清空规则: {}", configPath);
+            if (!rulesRef.get().isEmpty()) {
+                rulesRef.set(List.of());
+                logger.info("直连配置文件不存在，已清空规则: {}", configPath);
+            }
             return;
         }
 
@@ -56,8 +58,12 @@ public final class DirectAllowFilter {
                     loaded.add(rule);
                 }
             }
-            rulesRef.set(List.copyOf(loaded));
-            logger.info("直连配置已加载，规则数量: {}", loaded.size());
+            List<Rule> newRules = List.copyOf(loaded);
+            List<Rule> oldRules = rulesRef.get();
+            if (!oldRules.equals(newRules)) {
+                rulesRef.set(newRules);
+                logger.info("直连配置已加载，规则数量: {}", loaded.size());
+            }
         } catch (IOException e) {
             logger.error("读取直连配置失败，保留旧规则: {}", configPath, e);
         }

@@ -42,3 +42,4 @@ build/
 /server-jp.crt
 /server.crt
 /proxy.properties
+/proxy-jp.properties

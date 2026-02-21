@@ -1,27 +1,20 @@
 package com.itjiang;
 
-import static com.itjiang.Config.*;
-
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.socksx.v5.DefaultSocks5CommandResponse;
 import io.netty.handler.codec.socksx.v5.Socks5CommandRequest;
-import io.netty.handler.codec.socksx.v5.Socks5CommandRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5CommandStatus;
 import io.netty.handler.codec.socksx.v5.Socks5CommandType;
-
-import java.io.IOException;
-
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLException;
+import java.io.IOException;
+
+import static com.itjiang.Config.SERVER_HOST;
+import static com.itjiang.Config.SERVER_PORT;
 
 @ChannelHandler.Sharable
 public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Socks5CommandRequest> {
@@ -30,95 +23,74 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
 
     @Override
     protected void channelRead0(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
-        if (request.type() == Socks5CommandType.CONNECT) {
-            connectToRemoteServer(browserCtx, request);
-        } else {
+        if (request.type() != Socks5CommandType.CONNECT) {
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.COMMAND_UNSUPPORTED, request.dstAddrType()));
             browserCtx.close();
+            return;
         }
-    }
 
-    private void connectToRemoteServer(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
         if (DirectAllowFilter.getInstance().shouldDirect(request.dstAddr())) {
             connectDirect(browserCtx, request);
             return;
         }
+        connectTunnel(browserCtx, request);
+    }
 
-        SslContext sslCtx;
-        try {
-            sslCtx = SslContextBuilder.forClient()
-                    .sslProvider(SslProvider.OPENSSL)
-                    // 只信任该server.crt
-                    .trustManager(Config.SERVER_CERT)
-                    .build();
-        } catch (SSLException e) {
-            throw new RuntimeException("ssl证书配置异常", e);
-        }
-        Bootstrap b = new Bootstrap();
-        b.group(browserCtx.channel().eventLoop())
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
+    private void connectTunnel(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        RemoteConnectionHandler handler = new RemoteConnectionHandler(browserCtx, request);
+        TcpClientConnector.connect(
+                browserCtx,
+                SERVER_HOST,
+                SERVER_PORT,
+                TunnelChannelInitializerFactory.newInitializer(handler),
+                new TcpClientConnector.ConnectCallback() {
                     @Override
-                    protected void initChannel(SocketChannel ch) {
-                        // 连接远程服务器的 pipeline
-                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), SERVER_HOST, SERVER_PORT));
-                        ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
-                        ch.pipeline().addLast(new Common.TunnelMsgCodec());
-                        ch.pipeline().addLast(new RemoteConnectionHandler(browserCtx, request));
+                    public void onSuccess(Channel channel) {
                     }
-                });
 
-        b.connect(SERVER_HOST, SERVER_PORT).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                logger.error("连接远程服务器失败");
-                // 连接远程服务器失败，直接告诉浏览器
-                browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
-                browserCtx.close();
-            }
-        });
+                    @Override
+                    public void onFailure(Throwable cause) {
+                        logger.error("连接远程服务器失败", cause);
+                        browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
+                        browserCtx.close();
+                    }
+                }
+        );
     }
 
     private void connectDirect(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
-        Bootstrap b = new Bootstrap();
-        b.group(browserCtx.channel().eventLoop())
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
+        TcpClientConnector.connect(
+                browserCtx,
+                request.dstAddr(),
+                request.dstPort(),
+                new io.netty.channel.ChannelInitializer<>() {
                     @Override
-                    protected void initChannel(SocketChannel ch) {
+                    protected void initChannel(io.netty.channel.socket.SocketChannel ch) {
                     }
-                });
+                },
+                new TcpClientConnector.ConnectCallback() {
+                    @Override
+                    public void onSuccess(Channel targetChannel) {
+                        logger.info("命中直连规则，直接访问: {}", NetAddressFormatter.hostPort(request.dstAddr(), request.dstPort()));
+                        browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
+                                Socks5CommandStatus.SUCCESS, request.dstAddrType(), request.dstAddr(), request.dstPort()));
 
-        b.connect(request.dstAddr(), request.dstPort()).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                logger.warn("直连目标失败: {}:{}", request.dstAddr(), request.dstPort(), future.cause());
-                browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
-                browserCtx.close();
-                return;
-            }
+                        RelayPipeline.switchSocksToTcpRelay(browserCtx, targetChannel);
+                        targetChannel.pipeline().addLast(new TcpRelayHandler(browserCtx.channel()));
+                    }
 
-            Channel targetChannel = future.channel();
-            logger.info("命中直连规则，直接访问: {}:{}", request.dstAddr(), request.dstPort());
-            browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
-                    Socks5CommandStatus.SUCCESS, request.dstAddrType(), request.dstAddr(), request.dstPort()));
-
-            browserCtx.executor().execute(() -> {
-                if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
-                    browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
+                    @Override
+                    public void onFailure(Throwable cause) {
+                        logger.warn("直连目标失败: {}", NetAddressFormatter.hostPort(request.dstAddr(), request.dstPort()), cause);
+                        browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
+                        browserCtx.close();
+                    }
                 }
-                if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
-                    browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
-                }
-                browserCtx.pipeline().addLast(new TcpRelayHandler(targetChannel));
-            });
-            targetChannel.pipeline().addLast(new TcpRelayHandler(browserCtx.channel()));
-        });
+        );
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        // 命令处理阶段，浏览器也可能重置连接
         if (cause instanceof IOException && cause.getMessage() != null && cause.getMessage().contains("Connection reset")) {
             ctx.close();
         } else {
