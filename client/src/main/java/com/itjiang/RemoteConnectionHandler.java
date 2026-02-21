@@ -6,7 +6,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.socksx.v5.DefaultSocks5CommandResponse;
 import io.netty.handler.codec.socksx.v5.Socks5CommandRequest;
-import io.netty.handler.codec.socksx.v5.Socks5CommandRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5CommandStatus;
 import io.netty.util.ReferenceCountUtil;
 
@@ -33,11 +32,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
     public void channelActive(ChannelHandlerContext remoteCtx) {
         remoteCtx.write(new Common.TunnelMsg(Common.TYPE_AUTH, Config.CLIENT_AUTH_TOKEN));
 
-        String targetHost = socksRequest.dstAddr();
-        if (targetHost != null && targetHost.contains(":") && !targetHost.startsWith("[") && !targetHost.endsWith("]")) {
-            targetHost = "[" + targetHost + "]";
-        }
-        String targetAddr = String.format("%s:%d", targetHost, socksRequest.dstPort());
+        String targetAddr = NetAddressFormatter.hostPort(socksRequest.dstAddr(), socksRequest.dstPort());
         logger.info("socks5请求连接: {}", targetAddr);
         remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_CONNECT, targetAddr));
     }
@@ -59,15 +54,7 @@ public class RemoteConnectionHandler extends SimpleChannelInboundHandler<Common.
             browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
                     Socks5CommandStatus.SUCCESS, socksRequest.dstAddrType(), socksRequest.dstAddr(), socksRequest.dstPort()));
 
-            browserCtx.executor().execute(() -> {
-                if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
-                    browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
-                }
-                if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
-                    browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
-                }
-                browserCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
-            });
+            RelayPipeline.switchSocksToTunnelRelay(browserCtx, remoteCtx.channel());
 
             remoteCtx.pipeline().remove(this);
             remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(browserCtx.channel()));

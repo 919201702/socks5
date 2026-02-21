@@ -4,7 +4,10 @@ import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
-import io.netty.handler.codec.http.*;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -70,18 +73,7 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
         }
         ReferenceCountUtil.safeRelease(initialPayload);
 
-        localCtx.executor().execute(() -> {
-            if (localCtx.pipeline().get(HttpProxyRequestHandler.class) != null) {
-                localCtx.pipeline().remove(HttpProxyRequestHandler.class);
-            }
-            if (localCtx.pipeline().get(HttpObjectAggregator.class) != null) {
-                localCtx.pipeline().remove(HttpObjectAggregator.class);
-            }
-            if (localCtx.pipeline().get(HttpServerCodec.class) != null) {
-                localCtx.pipeline().remove(HttpServerCodec.class);
-            }
-            localCtx.pipeline().addLast(new BrowserDataRelayHandler(remoteCtx.channel()));
-        });
+        RelayPipeline.switchHttpToTunnelRelay(localCtx, remoteCtx.channel());
 
         remoteCtx.pipeline().remove(this);
         remoteCtx.pipeline().addLast(new RemoteDataRelayHandler(localCtx.channel()));

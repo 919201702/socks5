@@ -1,22 +1,26 @@
 package com.itjiang;
 
-import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;
 import io.netty.buffer.ByteBufUtil;
-import io.netty.channel.*;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.codec.http.*;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.SimpleChannelInboundHandler;
+import io.netty.handler.codec.http.DefaultFullHttpResponse;
+import io.netty.handler.codec.http.FullHttpRequest;
+import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpHeaderValues;
+import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.netty.handler.codec.http.HttpVersion;
+import io.netty.handler.codec.http.DefaultFullHttpRequest;
 import io.netty.util.ReferenceCountUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.net.ssl.SSLException;
 import java.net.URI;
 
 import static com.itjiang.Config.SERVER_HOST;
@@ -33,122 +37,97 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
 
     @Override
     protected void channelRead0(ChannelHandlerContext localCtx, FullHttpRequest request) {
-        boolean isConnect = request.method().equals(HttpMethod.CONNECT);
-        if (isHttps && !isConnect) {
+        boolean connectMethod = request.method().equals(HttpMethod.CONNECT);
+        if (isHttps && !connectMethod) {
             sendError(localCtx, HttpResponseStatus.METHOD_NOT_ALLOWED, "HTTPS 代理仅支持 CONNECT 方法");
             return;
         }
+
         ProxyTarget target;
         ByteBuf initialPayload = null;
         try {
-            if (isConnect) {
+            if (connectMethod) {
                 target = parseConnectTarget(request.uri());
             } else {
                 target = parseHttpTarget(request);
-                FullHttpRequest proxied = rebuildHttpRequest(request, target.path());
-                initialPayload = encodeRequest(localCtx.alloc(), proxied);
-                proxied.release();
+                FullHttpRequest proxiedRequest = rebuildHttpRequest(request, target.path());
+                initialPayload = encodeRequest(localCtx.alloc(), proxiedRequest);
+                proxiedRequest.release();
             }
         } catch (IllegalArgumentException ex) {
             sendError(localCtx, HttpResponseStatus.BAD_REQUEST, ex.getMessage());
             return;
         }
 
-        connectTunnel(localCtx, target, isConnect, initialPayload);
-    }
-
-    private void connectTunnel(ChannelHandlerContext localCtx, ProxyTarget target, boolean isConnect, ByteBuf initialPayload) {
         if (DirectAllowFilter.getInstance().shouldDirect(target.host())) {
-            connectDirect(localCtx, target, isConnect, initialPayload);
+            connectDirect(localCtx, target, connectMethod, initialPayload);
             return;
         }
-
-        SslContext sslCtx;
-        try {
-            sslCtx = SslContextBuilder.forClient()
-                    .sslProvider(SslProvider.OPENSSL)
-                    .trustManager(Config.SERVER_CERT)
-                    .build();
-        } catch (SSLException e) {
-            throw new RuntimeException("ssl证书配置异常", e);
-        }
-
-        Bootstrap b = new Bootstrap();
-        b.group(localCtx.channel().eventLoop())
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
-                    @Override
-                    protected void initChannel(SocketChannel ch) {
-                        ch.pipeline().addLast(sslCtx.newHandler(ch.alloc(), SERVER_HOST, SERVER_PORT));
-                        ch.pipeline().addLast(new LengthFieldBasedFrameDecoder(128 * 1024 * 1024, 0, 4, 0, 4));
-                        ch.pipeline().addLast(new Common.TunnelMsgCodec());
-                        ch.pipeline().addLast(new TunnelConnectHandler(localCtx, target.hostPort(), isConnect, initialPayload, isHttps));
-                    }
-                });
-
-        b.connect(SERVER_HOST, SERVER_PORT).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                logger.error("连接远程服务器失败", future.cause());
-                if (initialPayload != null) {
-                    ReferenceCountUtil.safeRelease(initialPayload);
-                }
-                sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接远程服务器失败");
-            }
-        });
+        connectTunnel(localCtx, target, connectMethod, initialPayload);
     }
 
-    private void connectDirect(ChannelHandlerContext localCtx, ProxyTarget target, boolean isConnect, ByteBuf initialPayload) {
-        Bootstrap b = new Bootstrap();
-        b.group(localCtx.channel().eventLoop())
-                .channel(NioSocketChannel.class)
-                .option(ChannelOption.TCP_NODELAY, true)
-                .handler(new ChannelInitializer<SocketChannel>() {
+    private void connectTunnel(ChannelHandlerContext localCtx, ProxyTarget target, boolean connectMethod, ByteBuf initialPayload) {
+        TunnelConnectHandler handler = new TunnelConnectHandler(localCtx, target.hostPort(), connectMethod, initialPayload, isHttps);
+        TcpClientConnector.connect(
+                localCtx,
+                SERVER_HOST,
+                SERVER_PORT,
+                TunnelChannelInitializerFactory.newInitializer(handler),
+                new TcpClientConnector.ConnectCallback() {
                     @Override
-                    protected void initChannel(SocketChannel ch) {
+                    public void onSuccess(Channel channel) {
                     }
-                });
 
-        b.connect(target.host(), target.port()).addListener((ChannelFutureListener) future -> {
-            if (!future.isSuccess()) {
-                logger.warn("直连目标失败: {}", target.hostPort(), future.cause());
-                if (initialPayload != null) {
-                    ReferenceCountUtil.safeRelease(initialPayload);
+                    @Override
+                    public void onFailure(Throwable cause) {
+                        logger.error("连接远程服务器失败", cause);
+                        ReferenceCountUtil.safeRelease(initialPayload);
+                        sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接远程服务器失败");
+                    }
                 }
-                sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接目标服务器失败");
-                return;
-            }
+        );
+    }
 
-            Channel targetChannel = future.channel();
-            logger.info("命中直连规则，直接访问: {}", target.hostPort());
+    private void connectDirect(ChannelHandlerContext localCtx, ProxyTarget target, boolean connectMethod, ByteBuf initialPayload) {
+        TcpClientConnector.connect(
+                localCtx,
+                target.host(),
+                target.port(),
+                new io.netty.channel.ChannelInitializer<>() {
+                    @Override
+                    protected void initChannel(io.netty.channel.socket.SocketChannel ch) {
+                    }
+                },
+                new TcpClientConnector.ConnectCallback() {
+                    @Override
+                    public void onSuccess(Channel targetChannel) {
+                        logger.info("命中直连规则，直接访问: {}", target.hostPort());
 
-            if (isConnect) {
-                DefaultFullHttpResponse response = new DefaultFullHttpResponse(
-                        HttpVersion.HTTP_1_1,
-                        new HttpResponseStatus(200, "Connection Established")
-                );
-                localCtx.writeAndFlush(response);
-            }
+                        if (connectMethod) {
+                            FullHttpResponse response = new DefaultFullHttpResponse(
+                                    HttpVersion.HTTP_1_1,
+                                    new HttpResponseStatus(200, "Connection Established")
+                            );
+                            localCtx.writeAndFlush(response);
+                        }
 
-            if (initialPayload != null && initialPayload.isReadable()) {
-                targetChannel.writeAndFlush(initialPayload.retainedDuplicate());
-            }
-            ReferenceCountUtil.safeRelease(initialPayload);
+                        if (initialPayload != null && initialPayload.isReadable()) {
+                            targetChannel.writeAndFlush(initialPayload.retainedDuplicate());
+                        }
+                        ReferenceCountUtil.safeRelease(initialPayload);
 
-            localCtx.executor().execute(() -> {
-                if (localCtx.pipeline().get(HttpProxyRequestHandler.class) != null) {
-                    localCtx.pipeline().remove(HttpProxyRequestHandler.class);
+                        RelayPipeline.switchHttpToTcpRelay(localCtx, targetChannel);
+                        targetChannel.pipeline().addLast(new TcpRelayHandler(localCtx.channel()));
+                    }
+
+                    @Override
+                    public void onFailure(Throwable cause) {
+                        logger.warn("直连目标失败: {}", target.hostPort(), cause);
+                        ReferenceCountUtil.safeRelease(initialPayload);
+                        sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接目标服务器失败");
+                    }
                 }
-                if (localCtx.pipeline().get(HttpObjectAggregator.class) != null) {
-                    localCtx.pipeline().remove(HttpObjectAggregator.class);
-                }
-                if (localCtx.pipeline().get(HttpServerCodec.class) != null) {
-                    localCtx.pipeline().remove(HttpServerCodec.class);
-                }
-                localCtx.pipeline().addLast(new TcpRelayHandler(targetChannel));
-            });
-            targetChannel.pipeline().addLast(new TcpRelayHandler(localCtx.channel()));
-        });
+        );
     }
 
     private ProxyTarget parseConnectTarget(String uri) {
@@ -247,10 +226,7 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
 
     private record ProxyTarget(String host, int port, String path) {
         String hostPort() {
-            if (host.contains(":") && !host.startsWith("[") && !host.endsWith("]")) {
-                return "[" + host + "]:" + port;
-            }
-            return host + ":" + port;
+            return NetAddressFormatter.hostPort(host, port);
         }
     }
 }
