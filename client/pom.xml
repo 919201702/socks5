@@ -120,6 +120,19 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>linux</id>
+            <activation>
+                <os>
+                    <family>unix</family>
+                    <name>Linux</name>
+                </os>
+            </activation>
+            <properties>
+                <graalvm.config.dir>linux-x86_64</graalvm.config.dir>
+            </properties>
+        </profile>
+
         <!-- Profile for Windows -->
         <profile>
             <id>windows</id>
@@ -165,10 +178,12 @@
                         </executions>
                         <configuration>
                             <mainClass>com.itjiang.Client</mainClass>
+                            <quickBuild>true</quickBuild>
                             <buildArgs>
                                 <buildArg>--no-fallback</buildArg>
                                 <buildArg>-H:+ReportUnsupportedElementsAtRuntime</buildArg>
                                 <buildArg>--enable-url-protocols=https</buildArg>
+                                <buildArg>--parallelism=4</buildArg>
                                 <!-- 禁用 Netty 的 FFM 特性，避免链接器错误 -->
                                 <buildArg>-Dio.netty.incubator.foreign.Foreign.isEnabled=false</buildArg>
                                 <buildArg>-H:IncludeResources=simplelogger.properties</buildArg>
