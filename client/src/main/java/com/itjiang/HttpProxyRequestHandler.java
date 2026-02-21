@@ -58,6 +58,11 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
     }
 
     private void connectTunnel(ChannelHandlerContext localCtx, ProxyTarget target, boolean isConnect, ByteBuf initialPayload) {
+        if (DirectAllowFilter.getInstance().shouldDirect(target.host())) {
+            connectDirect(localCtx, target, isConnect, initialPayload);
+            return;
+        }
+
         SslContext sslCtx;
         try {
             sslCtx = SslContextBuilder.forClient()
@@ -90,6 +95,59 @@ public class HttpProxyRequestHandler extends SimpleChannelInboundHandler<FullHtt
                 }
                 sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接远程服务器失败");
             }
+        });
+    }
+
+    private void connectDirect(ChannelHandlerContext localCtx, ProxyTarget target, boolean isConnect, ByteBuf initialPayload) {
+        Bootstrap b = new Bootstrap();
+        b.group(localCtx.channel().eventLoop())
+                .channel(NioSocketChannel.class)
+                .option(ChannelOption.TCP_NODELAY, true)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                    }
+                });
+
+        b.connect(target.host(), target.port()).addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                logger.warn("直连目标失败: {}", target.hostPort(), future.cause());
+                if (initialPayload != null) {
+                    ReferenceCountUtil.safeRelease(initialPayload);
+                }
+                sendError(localCtx, HttpResponseStatus.BAD_GATEWAY, "连接目标服务器失败");
+                return;
+            }
+
+            Channel targetChannel = future.channel();
+            logger.info("命中直连规则，直接访问: {}", target.hostPort());
+
+            if (isConnect) {
+                DefaultFullHttpResponse response = new DefaultFullHttpResponse(
+                        HttpVersion.HTTP_1_1,
+                        new HttpResponseStatus(200, "Connection Established")
+                );
+                localCtx.writeAndFlush(response);
+            }
+
+            if (initialPayload != null && initialPayload.isReadable()) {
+                targetChannel.writeAndFlush(initialPayload.retainedDuplicate());
+            }
+            ReferenceCountUtil.safeRelease(initialPayload);
+
+            localCtx.executor().execute(() -> {
+                if (localCtx.pipeline().get(HttpProxyRequestHandler.class) != null) {
+                    localCtx.pipeline().remove(HttpProxyRequestHandler.class);
+                }
+                if (localCtx.pipeline().get(HttpObjectAggregator.class) != null) {
+                    localCtx.pipeline().remove(HttpObjectAggregator.class);
+                }
+                if (localCtx.pipeline().get(HttpServerCodec.class) != null) {
+                    localCtx.pipeline().remove(HttpServerCodec.class);
+                }
+                localCtx.pipeline().addLast(new TcpRelayHandler(targetChannel));
+            });
+            targetChannel.pipeline().addLast(new TcpRelayHandler(localCtx.channel()));
         });
     }
 

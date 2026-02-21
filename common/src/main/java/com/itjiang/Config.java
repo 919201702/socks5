@@ -25,6 +25,7 @@ public final class Config {
     public static final String DEFAULT_SERVER_STATS_PATH = "./stats.json";
     private static final int DEFAULT_MONITOR_PORT = 18080;
     private static final String DEFAULT_MONITOR_HOST = "127.0.0.1";
+    private static final String DEFAULT_CLIENT_DIRECT_ALLOW_PATH = "./direct-allow.conf";
 
     public static final int SERVER_PORT;
     public static final String SERVER_HOST;
@@ -46,6 +47,7 @@ public final class Config {
     public static final String SERVER_STATS_PATH;
     public static final int SERVER_MONITOR_PORT;
     public static final String SERVER_MONITOR_HOST;
+    public static final String CLIENT_DIRECT_ALLOW_PATH;
 
     static {
         Properties props = loadProperties();
@@ -83,6 +85,7 @@ public final class Config {
         SERVER_STATS_PATH = getString(props, "server.stats.path", DEFAULT_SERVER_STATS_PATH);
         SERVER_MONITOR_PORT = parsePort(props, "server.monitor.port", DEFAULT_MONITOR_PORT);
         SERVER_MONITOR_HOST = getRequiredString(props, "server.monitor.host", DEFAULT_MONITOR_HOST);
+        CLIENT_DIRECT_ALLOW_PATH = getString(props, "client.direct.allow.path", DEFAULT_CLIENT_DIRECT_ALLOW_PATH);
     }
 
     private Config() {

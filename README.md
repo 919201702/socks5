@@ -115,6 +115,7 @@ client.socks5.username=admin
 client.socks5.password=123456
 client.http.port=8081
 client.https.port=8082
+client.direct.allow.path=./direct-allow.conf
 
 # remote server target
 server.host=127.0.0.1
@@ -130,6 +131,31 @@ server.cert.path=server.crt
 # monitor:
 server.monitor.host=127.0.0.1
 server.monitor.port=18080
+```
+
+### 直连放行规则（不走代理）
+
+客户端支持通过 `client.direct.allow.path` 指定放行规则文件（默认 `./direct-allow.conf`），命中规则的域名/IP 将直接由本机访问，不经过远程代理。规则文件支持热更新（修改后自动重新加载到 JVM 缓存）。
+
+规则语法：
+
+- 每行先 `trim`
+- 空行忽略
+- 以 `#` 开头为注释行，忽略
+- `*xxx`：后缀模糊匹配
+- `xxx*`：前缀模糊匹配
+- 其他：精确匹配
+
+示例：
+
+```text
+#这是注释
+www.baidu.com
+*baidu.com
+
+baidu*
+32.12.1.1
+35*
 ```
 
 

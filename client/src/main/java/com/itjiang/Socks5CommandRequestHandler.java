@@ -9,6 +9,7 @@ import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
 import io.netty.handler.codec.socksx.v5.DefaultSocks5CommandResponse;
 import io.netty.handler.codec.socksx.v5.Socks5CommandRequest;
+import io.netty.handler.codec.socksx.v5.Socks5CommandRequestDecoder;
 import io.netty.handler.codec.socksx.v5.Socks5CommandStatus;
 import io.netty.handler.codec.socksx.v5.Socks5CommandType;
 
@@ -38,6 +39,11 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
     }
 
     private void connectToRemoteServer(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        if (DirectAllowFilter.getInstance().shouldDirect(request.dstAddr())) {
+            connectDirect(browserCtx, request);
+            return;
+        }
+
         SslContext sslCtx;
         try {
             sslCtx = SslContextBuilder.forClient()
@@ -70,6 +76,43 @@ public class Socks5CommandRequestHandler extends SimpleChannelInboundHandler<Soc
                 browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
                 browserCtx.close();
             }
+        });
+    }
+
+    private void connectDirect(ChannelHandlerContext browserCtx, Socks5CommandRequest request) {
+        Bootstrap b = new Bootstrap();
+        b.group(browserCtx.channel().eventLoop())
+                .channel(NioSocketChannel.class)
+                .option(ChannelOption.TCP_NODELAY, true)
+                .handler(new ChannelInitializer<SocketChannel>() {
+                    @Override
+                    protected void initChannel(SocketChannel ch) {
+                    }
+                });
+
+        b.connect(request.dstAddr(), request.dstPort()).addListener((ChannelFutureListener) future -> {
+            if (!future.isSuccess()) {
+                logger.warn("直连目标失败: {}:{}", request.dstAddr(), request.dstPort(), future.cause());
+                browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(Socks5CommandStatus.FAILURE, request.dstAddrType()));
+                browserCtx.close();
+                return;
+            }
+
+            Channel targetChannel = future.channel();
+            logger.info("命中直连规则，直接访问: {}:{}", request.dstAddr(), request.dstPort());
+            browserCtx.writeAndFlush(new DefaultSocks5CommandResponse(
+                    Socks5CommandStatus.SUCCESS, request.dstAddrType(), request.dstAddr(), request.dstPort()));
+
+            browserCtx.executor().execute(() -> {
+                if (browserCtx.pipeline().get(Socks5CommandRequestHandler.class) != null) {
+                    browserCtx.pipeline().remove(Socks5CommandRequestHandler.class);
+                }
+                if (browserCtx.pipeline().get(Socks5CommandRequestDecoder.class) != null) {
+                    browserCtx.pipeline().remove(Socks5CommandRequestDecoder.class);
+                }
+                browserCtx.pipeline().addLast(new TcpRelayHandler(targetChannel));
+            });
+            targetChannel.pipeline().addLast(new TcpRelayHandler(browserCtx.channel()));
         });
     }
 
