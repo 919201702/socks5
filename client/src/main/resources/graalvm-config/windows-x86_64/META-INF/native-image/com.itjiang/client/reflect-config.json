@@ -23,9 +23,6 @@
   "methods":[{"name":"exceptionCaught","parameterTypes":["io.netty.channel.ChannelHandlerContext","java.lang.Throwable"] }]
 },
 {
-  "name":"com.itjiang.HttpProxyRequestHandler$1"
-},
-{
   "name":"com.itjiang.RemoteConnectionHandler",
   "methods":[{"name":"channelActive","parameterTypes":["io.netty.channel.ChannelHandlerContext"] }, {"name":"channelInactive","parameterTypes":["io.netty.channel.ChannelHandlerContext"] }, {"name":"exceptionCaught","parameterTypes":["io.netty.channel.ChannelHandlerContext","java.lang.Throwable"] }]
 },
@@ -38,9 +35,6 @@
   "methods":[{"name":"exceptionCaught","parameterTypes":["io.netty.channel.ChannelHandlerContext","java.lang.Throwable"] }]
 },
 {
-  "name":"com.itjiang.Socks5CommandRequestHandler$1"
-},
-{
   "name":"com.itjiang.Socks5InitialRequestHandler",
   "methods":[{"name":"exceptionCaught","parameterTypes":["io.netty.channel.ChannelHandlerContext","java.lang.Throwable"] }]
 },
@@ -50,6 +44,9 @@
 },
 {
   "name":"com.itjiang.Socks5ProxyClient$1"
+},
+{
+  "name":"com.itjiang.TunnelChannelInitializerFactory$1"
 },
 {
   "name":"com.itjiang.TunnelConnectHandler",
@@ -335,9 +332,6 @@
 },
 {
   "name":"java.security.KeyStoreSpi"
-},
-{
-  "name":"java.security.SecureRandomParameters"
 },
 {
   "name":"java.util.Date"

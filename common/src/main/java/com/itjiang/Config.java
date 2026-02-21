@@ -1,5 +1,8 @@
 package com.itjiang;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -8,12 +11,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 /**
  * 配置文件解析器.
  */
 public final class Config {
+    private static final Logger log = LoggerFactory.getLogger(Config.class);
 
     private static final int DEFAULT_SERVER_PORT = 58001;
     private static final int DEFAULT_CLIENT_SOCKS5_PORT = 58080;
@@ -93,8 +96,10 @@ public final class Config {
 
     private static Properties loadProperties() {
         Properties props = new Properties();
-        try (InputStream input = new FileInputStream(System.getProperty("config", "proxy.properties"))) {
+        String property = System.getProperty("config", "proxy.properties");
+        try (InputStream input = new FileInputStream(property)) {
             props.load(input);
+            log.info("加载配置文件: {}", property);
             return props;
         } catch (IOException ex) {
             throw new RuntimeException("读取配置文件失败，务必检查 proxy.properties 文件是否存在于程序运行目录下", ex);
