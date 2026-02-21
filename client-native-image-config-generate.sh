@@ -29,4 +29,4 @@ mkdir -p "${config_output_path}"
 
 mvn clean package
 echo "Running agent to generate config into: ${config_output_path}"
-java -agentlib:native-image-agent=config-output-dir="${config_output_path}" -jar "${app_jar}"
+java -agentlib:native-image-agent=config-output-dir="${config_output_path}" -Dconfig="proxy-jp.properties" -jar "${app_jar}"
