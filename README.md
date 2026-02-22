@@ -323,6 +323,76 @@ cd client/target
 -Dio.netty.leakDetection.level=PARANOID
 ```
 
+## 压测方案（Server / Client+Server 全方位）
+
+建议按 **分层压测** 执行，避免一次性混测导致定位困难。
+
+### 一、压测目标与维度
+
+- **Server-only**：仅压 `server` 的 TLS 接入、鉴权、隧道转发能力。
+- **Client+Server**：压完整链路（本地代理入口 -> Client -> Server -> 目标站点）。
+- 关注指标：成功率、QPS、平均/尾延迟、上下行吞吐、连接建立失败率、资源占用（CPU/内存/FD）。
+
+### 二、推荐执行步骤
+
+1. **基线测试（低并发）**：先验证配置和证书是否正确。
+2. **阶梯加压（10/50/100/200...）**：逐步提高并发和请求量，记录拐点。
+3. **稳态压测（30~60 分钟）**：观察长期稳定性、连接泄漏、吞吐波动。
+4. **故障注入**：目标站抖动/超时、断网重连、token 错误，验证系统恢复能力。
+
+### 三、脚本清单（新增）
+
+- `test/src/test/py/server_benchmark.py`
+  - 模式 `auth`：Server 握手+鉴权压测。
+  - 模式 `tunnel-echo`：Server 隧道数据转发压测。
+- `test/src/test/py/tcp_echo_server.py`
+  - 本地回显服务，供 `tunnel-echo` 模式使用。
+- `test/src/test/py/client_server_benchmark.py`
+  - 经 socks5/http 入口压测完整 Client+Server 链路（支持 HTTPS URL）。
+
+### 四、实操示例
+
+1）安装依赖：
+
+```bash
+pip3 install PySocks
+```
+
+2）Server-only：鉴权吞吐（不含目标转发）
+
+```bash
+python3 test/src/test/py/server_benchmark.py   --mode auth   --server-host 127.0.0.1 --server-port 8001   --token token-01   --threads 100 --iterations 200   --insecure
+```
+
+3）Server-only：隧道转发能力（配合本地 echo）
+
+```bash
+# 终端A：启动回显目标
+python3 test/src/test/py/tcp_echo_server.py --host 0.0.0.0 --port 9000
+
+# 终端B：压 server 隧道
+python3 test/src/test/py/server_benchmark.py   --mode tunnel-echo   --server-host 127.0.0.1 --server-port 8001   --token token-01 --target-host 127.0.0.1 --target-port 9000   --threads 50 --iterations 100 --messages-per-conn 20   --payload-bytes 2048 --expect-echo --insecure
+```
+
+4）Client+Server：完整链路压测（SOCKS5）
+
+```bash
+python3 test/src/test/py/client_server_benchmark.py   --proxy-type socks5 --proxy-host 127.0.0.1 --proxy-port 9090   --url https://example.com/   --requests 2000 --concurrency 200 --timeout 10
+```
+
+5）Client+Server：完整链路压测（HTTP 代理入口）
+
+```bash
+python3 test/src/test/py/client_server_benchmark.py   --proxy-type http --proxy-host 127.0.0.1 --proxy-port 9091   --url https://example.com/   --requests 2000 --concurrency 200 --timeout 10
+```
+
+### 五、结果判定建议
+
+- 成功率建议 >= 99.9%。
+- 平均延迟随并发升高应平滑增长，出现突增时记录并发拐点。
+- 长稳压测期间 `Monitor` 统计应持续增长且无异常回落。
+- 若失败率升高，优先排查：FD 上限、端口范围、证书配置、目标站限流。
+
 ## 开发与测试
 
 ### 本地打包
