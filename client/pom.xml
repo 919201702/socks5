@@ -64,7 +64,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[21,22)</version>
+                                    <version>[21,)</version>
                                 </requireJavaVersion>
                             </rules>
                             <fail>true</fail>
@@ -187,6 +187,8 @@
                                 <!-- 禁用 Netty 的 FFM 特性，避免链接器错误 -->
                                 <buildArg>-Dio.netty.incubator.foreign.Foreign.isEnabled=false</buildArg>
                                 <buildArg>-H:IncludeResources=simplelogger.properties</buildArg>
+                                <!-- 添加所有字符集，主要用于兼容win控制台GBK，非win环境可去除该配置 -->
+                                <buildArg>-H:+AddAllCharsets</buildArg>
                             </buildArgs>
                         </configuration>
                     </plugin>
