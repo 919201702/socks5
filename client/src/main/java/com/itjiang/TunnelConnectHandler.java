@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.TunnelMsg> {
     private static final Logger logger = LoggerFactory.getLogger(TunnelConnectHandler.class);
@@ -22,6 +23,7 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
     private final boolean connectMethod;
     private final ByteBuf initialPayload;
     private final boolean isHttps;
+    private final AtomicBoolean payloadReleased = new AtomicBoolean(false);
 
     public TunnelConnectHandler(ChannelHandlerContext localCtx, String target, boolean connectMethod, ByteBuf initialPayload, boolean isHttps) {
         this.localCtx = localCtx;
@@ -71,7 +73,7 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
         if (initialPayload != null && initialPayload.isReadable()) {
             remoteCtx.writeAndFlush(new Common.TunnelMsg(Common.TYPE_DATA, initialPayload.retainedDuplicate()));
         }
-        ReferenceCountUtil.safeRelease(initialPayload);
+        releaseInitialPayloadOnce();
 
         RelayPipeline.switchHttpToTunnelRelay(localCtx, remoteCtx.channel());
 
@@ -93,20 +95,20 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
         response.headers().set(HttpHeaderNames.CONTENT_TYPE, "text/plain; charset=UTF-8");
         response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
         localCtx.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
-        ReferenceCountUtil.safeRelease(initialPayload);
+        releaseInitialPayloadOnce();
         remoteCtx.close();
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) {
-        ReferenceCountUtil.safeRelease(initialPayload);
+        releaseInitialPayloadOnce();
         closeBoth(ctx);
     }
 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         logger.error("TunnelConnectHandler 异常", cause);
-        ReferenceCountUtil.safeRelease(initialPayload);
+        releaseInitialPayloadOnce();
         closeBoth(ctx);
     }
 
@@ -116,6 +118,13 @@ public class TunnelConnectHandler extends SimpleChannelInboundHandler<Common.Tun
         }
         if (remoteCtx.channel().isActive()) {
             remoteCtx.close();
+        }
+    }
+
+    private void releaseInitialPayloadOnce() {
+        if (initialPayload == null) return;
+        if (payloadReleased.compareAndSet(false, true)) {
+            ReferenceCountUtil.safeRelease(initialPayload);
         }
     }
 }
